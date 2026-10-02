@@ -351,9 +351,8 @@ class LLMClient:
         if key:
             os.environ["OPENAI_API_KEY"] = key
             try:
-                # pyrefly: ignore [missing-import]
-                from openai import OpenAI
-                self._client = OpenAI(api_key=key, timeout=30)
+                from openai import OpenAI  # type: ignore # pyrefly: ignore
+                self._client = OpenAI(api_key=key, timeout=30)  # type: ignore # pyrefly: ignore
             except Exception as exc:
                 self.last_error = str(exc)[:120]
 
@@ -456,6 +455,8 @@ class DiagnosticAgent(ReActAgent):
 
     def t_matrix(self, mem):
         st, prof = self.state, self.state.profile
+        if prof is None:
+            return "No profile available."
         st.topics.clear()
         for s in prof.subjects:
             base = 0.6 * s.quiz_score / 100 + 0.4 * (s.confidence - 1) / 4
@@ -469,8 +470,10 @@ class DiagnosticAgent(ReActAgent):
         return f"Skill matrix built: {len(st.topics)} topics, {len(prof.subjects)} subjects, mean mastery {wmean(st.topics.values()):.0%}."
 
     def t_calibration(self, mem):
-        st = self.state
-        st.calibration = {s.name: round(s.confidence / 5 - s.quiz_score / 100, 2) for s in st.profile.subjects}
+        st, prof = self.state, self.state.profile
+        if prof is None:
+            return "No profile available."
+        st.calibration = {s.name: round(s.confidence / 5 - s.quiz_score / 100, 2) for s in prof.subjects}
         mem["calibration"] = True
         mem["overconfident"] = [k for k, v in st.calibration.items() if v > 0.25]
         under = [k for k, v in st.calibration.items() if v < -0.25]
@@ -514,6 +517,8 @@ class DiagnosticAgent(ReActAgent):
 
     def t_insight(self, mem):
         st, prof = self.state, self.state.profile
+        if prof is None:
+            return "No profile available."
         facts = {"weak_topics": st.weak, "fragile": st.fragile, "calibration": st.calibration,
                  "baseline_pct": round(st.baseline_mastery * 100), "target": prof.target_score,
                  "days_left": (prof.exam_date - st.cursor).days, "hours_per_day": prof.hours_per_day}
@@ -552,6 +557,7 @@ class SchedulerAgent(ReActAgent):
 
     def run(self, trigger: str, **params: Any) -> Dict[str, Any]:
         st, prof = self.state, self.state.profile
+        assert prof is not None
         mem: Dict[str, Any] = {"trigger": trigger, "hours": prof.hours_per_day, "fatigue_level": st.fatigue, "notes": [], **params}
         self.log("STATE", f"Replan trigger = '{trigger}'. Cursor {st.cursor:%d %b}, exam {prof.exam_date:%d %b}, {prof.hours_per_day:g} h/day, fatigue {st.fatigue}/5.")
         self.loop(mem)
@@ -639,6 +645,7 @@ class SchedulerAgent(ReActAgent):
 
     def t_capacity(self, mem):
         st, prof = self.state, self.state.profile
+        assert prof is not None
         days = max(0, (prof.exam_date - st.cursor).days)
         base = max(1, int(mem["hours_eff"] * 60 // (SESSION_MIN + BREAK_MIN)))
         spd = [0 if i in mem["rest_days"] else base for i in range(days)]
@@ -669,6 +676,7 @@ class SchedulerAgent(ReActAgent):
 
     def t_allocate(self, mem):
         st, prof = self.state, self.state.profile
+        assert prof is not None
         sims = {k: v.model_copy(deep=True) for k, v in st.topics.items()}
         comp = mem.get("compressed", 0)
         if comp:
@@ -785,7 +793,8 @@ class SchedulerAgent(ReActAgent):
         return f"Allocated {n_sessions} sessions over {days} days. Coverage {st.plan.coverage:.0%}, projected mastery {proj:.0%}."
 
     def t_validate(self, mem):
-        st, prof, plan = self.state, self.state.profile, self.state.plan
+        prof, plan = self.state.profile, self.state.plan
+        assert prof is not None and plan is not None
         unl = [t.name for t in mem["sim"].values() if not t.learned]
         proj, target = mem["projected"], prof.target_score / 100
         warns: List[str] = []
@@ -935,6 +944,8 @@ class EvaluatorAgent(ReActAgent):
         data = self.llm.json_chat(
             'You are a rigorous but encouraging tutor. Reply ONLY with JSON {"score": 0-10, "correct": [str], "missing": [str], "misconception": str, "next_step": str}.',
             f"Question: {q.question}\nReference answer: {q.model_answer}\nStudent answer: {a}")
+        if not data:
+            return None
         try:
             return GradeResult(topic=q.topic, subject=q.subject, score=round(max(0.0, min(10.0, float(data["score"]))), 1),
                                correct=[str(x) for x in data.get("correct", [])], missing=[str(x) for x in data.get("missing", [])],
@@ -1019,7 +1030,9 @@ class Orchestrator:
         self.transition(Phase.PLANNED, "plan v1 created")
 
     def adapt(self, missed: int, fatigue: int, hours: float, note: str) -> str:
-        st, prof = self.state, self.state.profile
+        st, prof, plan = self.state, self.state.profile, self.state.plan
+        if prof is None or plan is None:
+            return "Please create a study plan first."
         days_left = (prof.exam_date - st.cursor).days
         if days_left <= 0:
             return "The exam day has arrived. Good luck!"
@@ -1036,15 +1049,17 @@ class Orchestrator:
         add_trace(st, "Orchestrator", "MESSAGE", f"Student to Scheduler Agent: missed={missed}, fatigue={fatigue}, hours={prof.hours_per_day:g}, note='{note or ''}'")
         mem = self.scheduler.run("adapt", missed_days=missed)
         self.transition(Phase.PLANNED, "plan rebalanced")
-        return f"**Plan v{st.plan.version} created.** " + " | ".join(mem["notes"]) + (f"\n\n{' '.join(st.plan.warnings)}" if st.plan.warnings else "")
+        return f"**Plan v{plan.version} created.** " + " | ".join(mem["notes"]) + (f"\n\n{' '.join(plan.warnings)}" if plan.warnings else "")
 
     def complete_today(self) -> str:
-        st, prof = self.state, self.state.profile
+        st, prof, plan = self.state, self.state.profile, self.state.plan
+        if prof is None or plan is None:
+            return "Please create a study plan first."
         d = st.cursor
         if d >= prof.exam_date:
             return "The exam day has arrived. Good luck!"
         n = 0
-        for b in st.plan.blocks:
+        for b in plan.blocks:
             if b.day == d and b.status == "planned":
                 b.status = "done"
                 if b.kind in ("learn", "review", "recall") and b.topic in st.topics:
@@ -1072,134 +1087,241 @@ class Orchestrator:
         self.transition(Phase.ADAPTING, "performance feedback")
         mem = self.scheduler.run("performance", adjustments=[a.model_dump() for a in adjs])
         self.transition(Phase.PLANNED, "plan updated from performance")
-        self.last_feedback_note = f"Schedule updated to **v{st.plan.version}**: " + " | ".join(mem["notes"])
-        return f"Scheduler replanned (v{st.plan.version}). " + " | ".join(mem["notes"])
+        v = st.plan.version if st.plan else 1
+        self.last_feedback_note = f"Schedule updated to **v{v}**: " + " | ".join(mem["notes"])
+        return f"Scheduler replanned (v{v}). " + " | ".join(mem["notes"])
 
 # %%
-# Cell 5: rendering helpers (HTML and Markdown views)
-SUBJECT_COLORS = {"Mathematics": "#2563eb", "Physics": "#0891b2", "Chemistry": "#16a34a", "Biology": "#65a30d",
-                  "Computer Science": "#d97706", "History": "#dc2626"}
-KIND_META = {"learn": ("📘", "Learn"), "review": ("🔁", "Review"), "recall": ("🧠", "Active recall"),
-             "mock": ("📝", "Mock test"), "break": ("☕", "Break"), "rest": ("🌙", "Rest")}
+# Cell 5: rendering helpers (HTML and Markdown views) - Portfolio Design System
+SUBJECT_COLORS = {
+    "Mathematics": "#3b82f6",     # Modern vibrant blue
+    "Physics": "#06b6d4",         # Cyan / Electric Teal
+    "Chemistry": "#10b981",       # Emerald Green
+    "Biology": "#84cc16",         # Lime Green
+    "Computer Science": "#8b5cf6",# Violet / Electric Indigo
+    "History": "#f59e0b",         # Golden Amber
+}
+
+KIND_META = {
+    "learn": ("📘", "Learn"),
+    "review": ("🔁", "Spaced Review"),
+    "recall": ("🧠", "Active Recall"),
+    "mock": ("📝", "Mock Exam"),
+    "break": ("☕", "Restorative Break"),
+    "rest": ("🌙", "Rest Day"),
+}
+
 E = html.escape
+
+CARD_ICONS = {
+    "Days to exam": "⏳",
+    "Days left": "⏳",
+    "Baseline mastery": "📊",
+    "Target": "🎯",
+    "Hours per day": "⏱️",
+    "Sessions ahead": "📅",
+    "Sessions done": "✅",
+    "Topic coverage": "🗺️",
+    "Projected mastery": "🚀",
+    "Plan version": "🏷️",
+    "Answers graded": "📝",
+    "Average score": "🏆",
+    "Latest": "⚡",
+    "Mastery now": "💡",
+    "Since baseline": "📈",
+}
 
 
 def mcolor(m: float) -> str:
-    return "#dc2626" if m < 0.45 else "#d97706" if m < 0.7 else "#059669"
+    if m < 0.45:
+        return "linear-gradient(90deg, #ef4444, #f87171)"
+    if m < 0.70:
+        return "linear-gradient(90deg, #f59e0b, #fbbf24)"
+    return "linear-gradient(90deg, #10b981, #06b6d4)"
 
 
 def cards(items: List[Tuple[str, str]]) -> str:
-    return "<div class='cards'>" + "".join(f"<div class='card'><div class='v'>{v}</div><div class='k'>{E(k)}</div></div>" for k, v in items) + "</div>"
+    out = []
+    for k, v in items:
+        ico = CARD_ICONS.get(k, "📌")
+        out.append(
+            f"<div class='card'>"
+            f"  <div class='card-top'><span class='card-ico'>{ico}</span><span class='k'>{E(k)}</span></div>"
+            f"  <div class='v'>{v}</div>"
+            f"</div>"
+        )
+    return "<div class='cards'>" + "".join(out) + "</div>"
 
 
 def bar(label: str, sub: str, m: float) -> str:
-    return (f"<div class='barrow'><span class='bl'><i style='background:{SUBJECT_COLORS.get(sub, '#64748b')}'></i>{E(label)}</span>"
-            f"<div class='bar'><div style='width:{m * 100:.0f}%;background:{mcolor(m)}'></div></div><span class='bp'>{m:.0%}</span></div>")
+    c = SUBJECT_COLORS.get(sub, "#6366f1")
+    return (
+        f"<div class='barrow'>"
+        f"  <span class='bl'>"
+        f"    <span class='sub-dot' style='background:{c};box-shadow:0 0 8px {c}88'></span>"
+        f"    <span class='lbl-text'>{E(label)}</span>"
+        f"  </span>"
+        f"  <div class='bar-track'><div class='bar-fill' style='width:{m * 100:.0f}%;background:{mcolor(m)}'></div></div>"
+        f"  <span class='bp'>{m:.0%}</span>"
+        f"</div>"
+    )
 
 
-EMPTY = "<div class='card muted'>Nothing here yet. Build your plan in the first tab.</div>"
+EMPTY = (
+    "<div class='empty-card'>"
+    "  <div class='empty-icon'>📂</div>"
+    "  <div class='empty-text'>"
+    "    <b>Portfolio Data Not Initialized Yet</b><br>"
+    "    Configure your academic parameters and click <b>Diagnose &amp; Synthesize Study Plan</b> in the setup tab."
+    "  </div>"
+    "</div>"
+)
 
 
 def render_diag(st: AppState) -> str:
     prof = st.profile
-    weak_rows = "".join(f"<tr><td>{E(n)}</td><td>{E(st.topics[n].subject)}</td><td>{st.topics[n].mastery:.0%}</td><td>{priority(st.topics[n]):.2f}</td></tr>" for n in st.weak)
-    cal = "".join(f"<span class='chip' style='border-color:{'#dc2626' if v > .25 else '#059669' if abs(v) <= .25 else '#d97706'}'>{E(k)}: {v:+.0%}</span>" for k, v in st.calibration.items())
-    frag = "".join(f"<li>{E(f)}</li>" for f in st.fragile) or "<li>None found.</li>"
+    if prof is None:
+        return EMPTY
+    weak_rows = "".join(
+        f"<tr>"
+        f"  <td><b>{E(n)}</b></td>"
+        f"  <td><span class='subject-pill' style='background:{SUBJECT_COLORS.get(st.topics[n].subject, '#475569')}22;color:{SUBJECT_COLORS.get(st.topics[n].subject, '#94a3b8')};border:1px solid {SUBJECT_COLORS.get(st.topics[n].subject, '#475569')}44'>{E(st.topics[n].subject)}</span></td>"
+        f"  <td><span class='pct-pill'>{st.topics[n].mastery:.0%}</span></td>"
+        f"  <td><code class='priority-badge'>{priority(st.topics[n]):.2f}</code></td>"
+        f"</tr>"
+        for n in st.weak
+    )
+    cal = "".join(
+        f"<span class='chip' style='border-color:{'#ef4444' if v > .25 else '#10b981' if abs(v) <= .25 else '#f59e0b'};background:{'rgba(239,68,68,0.1)' if v > .25 else 'rgba(16,185,129,0.1)' if abs(v) <= .25 else 'rgba(245,158,11,0.1)'}'>{E(k)}: {v:+.0%}</span>"
+        for k, v in st.calibration.items()
+    )
+    frag = "".join(f"<li class='frag-item'>⚠️ {E(f)}</li>" for f in st.fragile) or "<li class='muted-item'>✅ No fragile prerequisite foundations detected.</li>"
     bars = ""
     for s in prof.subjects:
-        bars += f"<h4>{E(s.name)}</h4>" + "".join(bar(t.name, t.subject, t.mastery) for t in st.topics.values() if t.subject == s.name)
-    return (cards([("Days to exam", str((prof.exam_date - st.cursor).days)), ("Baseline mastery", f"{st.baseline_mastery:.0%}"),
-                   ("Target", f"{prof.target_score}%"), ("Hours per day", f"{prof.hours_per_day:g}")])
-            + f"<div class='box'><b>Coach's read</b><p>{E(st.insight)}</p></div>"
-            + f"<div class='box'><b>Priority topics</b><table><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Need score</th></tr>{weak_rows}</table></div>"
-            + f"<div class='box'><b>Confidence minus measured score</b><div>{cal}</div><b>Fragile foundations</b><ul>{frag}</ul></div>"
-            + f"<div class='box'><b>Skill matrix</b>{bars}<p class='muted'>Topic-level values are inferred from your subject score and confidence, then propagated through prerequisites. Quizzes refine them.</p></div>")
+        c = SUBJECT_COLORS.get(s.name, "#6366f1")
+        bars += (
+            f"<div class='subject-section-head'>"
+            f"  <h4 style='color:{c}'><span class='section-bullet' style='background:{c};box-shadow:0 0 8px {c}88'></span>{E(s.name)}"
+            f"  <span class='weight-badge'>Exam Weight {s.exam_weight}/5 · Baseline {s.quiz_score:.0f}%</span></h4>"
+            f"</div>"
+            + "".join(bar(t.name, t.subject, t.mastery) for t in st.topics.values() if t.subject == s.name)
+        )
+    return (
+        cards([("Days to exam", str((prof.exam_date - st.cursor).days)), ("Baseline mastery", f"{st.baseline_mastery:.0%}"),
+               ("Target", f"{prof.target_score}%"), ("Hours per day", f"{prof.hours_per_day:g} h")])
+        + f"<div class='box box-hero'><div class='box-title'><span class='ico'>💡</span><b>Cognitive Coach Assessment &amp; Strategy Brief</b></div><p class='coach-insight'>{E(st.insight)}</p></div>"
+        + f"<div class='box'><div class='box-title'><span class='ico'>🎯</span><b>Priority Focus Areas (Need &times; Gap &times; Exam Weight)</b></div><table class='portfolio-table'><thead><tr><th>Topic</th><th>Subject</th><th>Current Mastery</th><th>Priority Need</th></tr></thead><tbody>{weak_rows}</tbody></table></div>"
+        + f"<div class='box'><div class='box-title'><span class='ico'>⚖️</span><b>Metacognitive Calibration &amp; Foundation Risk</b></div><div style='margin-bottom:10px'><b>Confidence vs Measured Score Gap:</b><div class='chip-container'>{cal}</div></div><b>Prerequisite Vulnerabilities:</b><ul class='clean-list'>{frag}</ul></div>"
+        + f"<div class='box'><div class='box-title'><span class='ico'>📊</span><b>Comprehensive Competency Matrix</b></div>{bars}<p class='muted' style='margin-top:10px'>Topic mastery levels are dynamically calibrated by Bayesian evidence accumulation and quiz performance.</p></div>"
+    )
 
 
 def render_timeline(st: AppState) -> str:
     plan, prof = st.plan, st.profile
+    if plan is None or prof is None:
+        return EMPTY
     by_day: Dict[date, List[StudyBlock]] = {}
     for b in plan.blocks:
         by_day.setdefault(b.day, []).append(b)
     first, cells = plan.start, []
     cells += [f"<div class='hd'>{w}</div>" for w in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")]
-    cells += ["<div></div>"] * first.weekday()
+    cells += ["<div class='day empty'></div>"] * first.weekday()
     d = first
     while d <= prof.exam_date:
         cls = "day" + (" today" if d == st.cursor else "") + (" past" if d < st.cursor else "") + (" exam" if d == prof.exam_date else "")
         label = f"{d.day} {d:%b}" if (d.day == 1 or d == first) else str(d.day)
         dots = ""
         if d == prof.exam_date:
-            dots = "<div class='ex'>Exam</div>"
+            dots = "<div class='ex-badge'>🎯 Final Exam</div>"
         for b in by_day.get(d, []):
             if b.kind == "break":
                 continue
             if b.kind == "rest":
-                dots += "<span title='Rest day'>🌙</span>"
+                dots += "<span class='dot-rest' title='Rest & Recovery'>🌙</span>"
                 continue
-            c = SUBJECT_COLORS.get(b.subject, "#64748b")
-            style = {"learn": f"background:{c}", "review": f"background:transparent;border:2.5px solid {c}",
-                     "recall": f"background:{c}55;border:2px dotted {c}", "mock": f"background:{c};border-radius:3px;transform:rotate(45deg)"}[b.kind]
-            dots += f"<span class='dot {b.status}' style='{style}' title='{E(KIND_META[b.kind][1])}: {E(b.topic)} ({b.status})'></span>"
-        cells.append(f"<div class='{cls}'><div class='n'>{label}</div><div class='dots'>{dots}</div></div>")
+            c = SUBJECT_COLORS.get(b.subject, "#6366f1")
+            style = {"learn": f"background:{c};box-shadow:0 0 6px {c}88",
+                     "review": f"background:transparent;border:2px solid {c}",
+                     "recall": f"background:{c}44;border:1.5px dashed {c}",
+                     "mock": f"background:{c};border-radius:2px;transform:rotate(45deg);box-shadow:0 0 6px {c}88"}.get(b.kind, f"background:{c}")
+            dots += f"<span class='dot {b.status}' style='{style}' title='{E(KIND_META.get(b.kind, ('', b.kind))[1])}: {E(b.topic)} ({b.status})'></span>"
+        today_tag = "<span class='today-tag'>TODAY</span>" if d == st.cursor else ""
+        cells.append(f"<div class='{cls}'><div class='day-header'><span class='n'>{label}</span>{today_tag}</div><div class='dots'>{dots}</div></div>")
         d += timedelta(days=1)
-    legend = "".join(f"<span class='chip'><i style='background:{c}'></i>{E(s)}</span>" for s, c in SUBJECT_COLORS.items() if any(t.subject == s for t in st.topics.values()))
-    key = ("<span class='chip'>● learn</span><span class='chip'>◯ spaced review</span><span class='chip'>◌ active recall</span>"
-           "<span class='chip'>◆ mock test</span><span class='chip' style='border-color:#dc2626'>red outline: missed</span>")
-    return f"<div class='legend'>{legend}</div><div class='legend'>{key}</div><div class='tl'>{''.join(cells)}</div>"
+    legend = "".join(f"<span class='chip subject-chip'><i style='background:{c};box-shadow:0 0 6px {c}88'></i>{E(s)}</span>" for s, c in SUBJECT_COLORS.items() if any(t.subject == s for t in st.topics.values()))
+    key = ("<span class='chip legend-chip'>● Learn Session</span>"
+           "<span class='chip legend-chip'>◯ Spaced Review</span>"
+           "<span class='chip legend-chip'>◌ Active Recall</span>"
+           "<span class='chip legend-chip'>◆ Mock Test</span>"
+           "<span class='chip legend-chip danger-chip'>Red border: Missed</span>")
+    return f"<div class='legend-bar'><div class='legend'>{legend}</div><div class='legend'>{key}</div></div><div class='tl'>{''.join(cells)}</div>"
 
 
 def render_table(st: AppState, horizon: int) -> str:
     plan, prof = st.plan, st.profile
+    if plan is None or prof is None:
+        return "_No study plan generated yet. Synthesize your plan in the first tab._"
     start = max(plan.start, st.cursor - timedelta(days=3))
     end = min(prof.exam_date, st.cursor + timedelta(days=horizon))
     by_day: Dict[date, List[StudyBlock]] = {}
     for b in plan.blocks:
         by_day.setdefault(b.day, []).append(b)
-    rows = ["| Day | Date | Plan | Focus |", "|---|---|---|---|"]
+    rows = ["| Day # | Calendar Date | Targeted Study Sessions | Scheduled Duration |", "|:---:|:---|:---|:---:|"]
     d = start
     while d <= end:
         parts, mins = [], 0
         for b in sorted(by_day.get(d, []), key=lambda x: (x.slot, x.kind == "break")):
-            mark = {"done": " ✅", "missed": " ⚠️ missed", "planned": ""}[b.status]
-            icon, label = KIND_META[b.kind]
+            mark = {"done": " ✅ *(completed)*", "missed": " ⚠️ *(missed)*", "planned": ""}[b.status]
+            icon, label = KIND_META.get(b.kind, ("📚", b.kind))
             if b.kind == "break":
                 parts.append(f"{icon} {b.minutes} min break")
             elif b.kind == "rest":
-                parts.append(f"{icon} {b.note}")
+                parts.append(f"{icon} **{b.note}**")
             else:
                 mins += b.minutes
-                parts.append(f"`{b.start}` {icon} **{label}**: {b.subject}, {b.topic} ({b.minutes} min){mark}<br>&nbsp;&nbsp;&nbsp;<sub>{b.note}</sub>")
+                parts.append(f"`{b.start}` {icon} **{label}**: {b.subject} &rarr; *{b.topic}* ({b.minutes} min){mark}<br>&nbsp;&nbsp;&nbsp;<sub>💡 {b.note}</sub>")
         if d == prof.exam_date:
-            parts = ["🎯 **Exam day**"]
+            parts = ["🎯 **EXAM DAY - Final Review & Performance Readiness**"]
         day_no = (d - plan.start).days + 1
-        datecell = f"**▶ {d:%a %d %b}**" if d == st.cursor else f"{d:%a %d %b}"
-        rows.append(f"| {day_no} | {datecell} | {'<br>'.join(parts) or '-'} | {mins} min |")
+        datecell = f"**▶ {d:%a %d %b}** *(Current Day)*" if d == st.cursor else f"{d:%a %d %b}"
+        rows.append(f"| Day {day_no} | {datecell} | {'<br>'.join(parts) or '-'} | **{mins} min** |")
         d += timedelta(days=1)
     return "\n".join(rows)
 
 
 def render_summary(st: AppState) -> str:
     plan, prof = st.plan, st.profile
+    if plan is None or prof is None:
+        return EMPTY
     left = sum(1 for b in plan.blocks if b.day >= st.cursor and b.kind not in ("break", "rest"))
     done = sum(1 for b in plan.blocks if b.status == "done" and b.kind not in ("break", "rest"))
     out = cards([("Days left", str(max(0, (prof.exam_date - st.cursor).days))), ("Sessions ahead", str(left)), ("Sessions done", str(done)),
                  ("Topic coverage", f"{plan.coverage:.0%}"), ("Projected mastery", f"{plan.projected_mastery:.0%}"), ("Plan version", f"v{plan.version}")])
-    out += "<div class='box'><b>Milestones</b><ul>" + "".join(f"<li>{E(m)}</li>" for m in plan.milestones) + "</ul></div>"
+    ms_items = "".join(f"<li class='milestone-item'><span class='milestone-check'>🏁</span> {E(m)}</li>" for m in plan.milestones)
+    out += f"<div class='box'><div class='box-title'><span class='ico'>🎯</span><b>Roadmap Milestones &amp; Targets</b></div><ul class='clean-list'>{ms_items}</ul></div>"
     if plan.warnings:
-        out += "<div class='box warn'><b>Heads-up</b><ul>" + "".join(f"<li>{E(w)}</li>" for w in plan.warnings) + "</ul></div>"
-    out += "<div class='box'><b>Plan history</b><ul>" + "".join(f"<li>{E(c)}</li>" for c in plan.changelog[-5:]) + "</ul></div>"
+        warn_items = "".join(f"<li class='warn-item'>⚠️ {E(w)}</li>" for w in plan.warnings)
+        out += f"<div class='box box-warn'><div class='box-title'><span class='ico'>⚡</span><b>Capacity &amp; Pacing Alerts</b></div><ul class='clean-list'>{warn_items}</ul></div>"
+    ch_items = "".join(f"<li class='history-item'><span class='history-tag'>LOG</span> {E(c)}</li>" for c in plan.changelog[-5:])
+    out += f"<div class='box'><div class='box-title'><span class='ico'>📜</span><b>Plan Mutation History &amp; Changelog</b></div><ul class='clean-list'>{ch_items}</ul></div>"
     return out
 
 
 def sparkline(vals: List[float]) -> str:
     if len(vals) < 2:
-        return "<p class='muted'>Submit two or more quizzes to see your trend.</p>"
-    w, h = 300, 70
-    pts = [(5 + i * (w - 10) / (len(vals) - 1), h - 6 - (v / 10) * (h - 12)) for i, v in enumerate(vals)]
+        return "<p class='muted' style='text-align:center;padding:16px 0'>Submit 2 or more quizzes to render your score trajectory.</p>"
+    w, h = 340, 75
+    pts = [(5 + i * (w - 10) / (len(vals) - 1), h - 8 - (max(0.0, min(10.0, v)) / 10) * (h - 16)) for i, v in enumerate(vals)]
     path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-    dots = "".join(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='3.5' fill='#0f766e'/>" for x, y in pts)
-    return f"<svg viewBox='0 0 {w} {h}' width='100%' height='{h}'><path d='{path}' fill='none' stroke='#0f766e' stroke-width='2.5'/>{dots}</svg>"
+    area = f"{path} L{pts[-1][0]:.1f},{h} L{pts[0][0]:.1f},{h} Z"
+    dots = "".join(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='3.5' fill='#06b6d4' stroke='#0f172a' stroke-width='2'/>" for x, y in pts)
+    return (f"<svg viewBox='0 0 {w} {h}' width='100%' height='{h}' style='overflow:visible'>"
+            f"<defs><linearGradient id='sparkGrad' x1='0' y1='0' x2='0' y2='1'>"
+            f"<stop offset='0%' stop-color='#06b6d4' stop-opacity='0.35'/>"
+            f"<stop offset='100%' stop-color='#06b6d4' stop-opacity='0.0'/>"
+            f"</linearGradient></defs>"
+            f"<path d='{area}' fill='url(#sparkGrad)'/>"
+            f"<path d='{path}' fill='none' stroke='#06b6d4' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>{dots}</svg>")
 
 
 def render_analytics(st: AppState) -> str:
@@ -1208,86 +1330,829 @@ def render_analytics(st: AppState) -> str:
     last = logs[-1].score * 10 if logs else 0
     out = cards([("Answers graded", str(len(logs))), ("Average score", f"{avg:.0f}%" if logs else "-"), ("Latest", f"{last:.0f}%" if logs else "-"),
                  ("Mastery now", f"{wmean(st.topics.values()):.0%}"), ("Since baseline", f"{(wmean(st.topics.values()) - st.baseline_mastery) * 100:+.0f} pts")])
-    out += f"<div class='box'><b>Score trend (out of 10)</b>{sparkline([l.score for l in logs[-12:]])}</div>"
+    out += f"<div class='box'><div class='box-title'><span class='ico'>📈</span><b>Score Trajectory (Scale 0-10)</b></div><div style='padding:6px 0'>{sparkline([l.score for l in logs[-12:]])}</div></div>"
     subj: Dict[str, List[float]] = {}
     for t in st.topics.values():
         subj.setdefault(t.subject, []).append(t.mastery)
-    out += "<div class='box'><b>Mastery by subject</b>" + "".join(bar(s, s, sum(v) / len(v)) for s, v in subj.items()) + "</div>"
+    out += "<div class='box'><div class='box-title'><span class='ico'>📊</span><b>Subject Mastery Overview</b></div>" + "".join(bar(s, s, sum(v) / len(v)) for s, v in sorted(subj.items()) if v) + "</div>"
     if logs:
-        rows = "".join(f"<tr><td>{E(l.ts)}</td><td>{E(l.topic)}</td><td>{l.score}/10</td><td>{l.mastery_before:.0%} to {l.mastery_after:.0%}</td></tr>" for l in reversed(logs[-8:]))
-        out += f"<div class='box'><b>Recent results</b><table><tr><th>When</th><th>Topic</th><th>Score</th><th>Mastery</th></tr>{rows}</table></div>"
+        rows = "".join(f"<tr><td><code>{E(l.ts)}</code></td><td><b>{E(l.topic)}</b></td><td><span class='score-pill'>{l.score:.1f}/10</span></td><td><span class='mastery-shift'>{l.mastery_before:.0%} &rarr; {l.mastery_after:.0%}</span></td></tr>" for l in reversed(logs[-8:]))
+        out += f"<div class='box'><div class='box-title'><span class='ico'>📝</span><b>Recent Evaluation Log</b></div><table class='portfolio-table'><thead><tr><th>Timestamp</th><th>Topic</th><th>Score</th><th>Mastery Delta</th></tr></thead><tbody>{rows}</tbody></table></div>"
     return out
 
 
 def render_trace(o: Optional[Orchestrator]) -> str:
-    mode = "OpenAI " + LLM.MODEL if LLM.live else "offline rule engine"
+    mode = f"OpenAI {LLM.MODEL}" if LLM.live else "Offline ReAct Engine"
     if o is None or not o.state.trace:
-        return f"<div class='box'>No agent activity yet. Build a plan to watch the agents think. Engine: {mode}.</div>"
+        return (f"<div class='empty-card'>"
+                f"  <div class='empty-icon'>🧠</div>"
+                f"  <div class='empty-text'>"
+                f"    <b>No Agent Activity Recorded Yet</b><br>"
+                f"    Engine: <code>{mode}</code>.<br>"
+                f"    Synthesize a plan or run a quiz to observe live multi-agent cognitive reasoning."
+                f"  </div>"
+                f"</div>")
     st = o.state
-    rows = "".join(f"<div class='tr {s.kind}'><span class='ts'>{s.ts}</span><span class='ag'>{E(s.agent)}</span><span class='kd'>{s.kind}</span><span class='tx'>{E(s.text)}</span></div>" for s in st.trace[-400:])
-    return (f"<div class='legend'><span class='chip'>State: <b>{st.phase.value}</b></span><span class='chip'>Engine: {mode}</span>"
-            f"<span class='chip'>{len(st.trace)} trace steps</span></div><div class='scroll'><div>{rows}</div></div>")
+    rows = "".join(f"<div class='tr {s.kind}'><span class='ts'>{s.ts}</span><span class='ag'>{E(s.agent)}</span><span class='kd-badge kd-{s.kind}'>{s.kind}</span><span class='tx'>{E(s.text)}</span></div>" for s in st.trace[-400:])
+    return (f"<div class='terminal-header'>"
+            f"  <div class='terminal-badges'>"
+            f"    <span class='chip live-chip'><span class='pulse-dot green'></span> State: <b>{st.phase.value}</b></span>"
+            f"    <span class='chip'>Engine: <b>{mode}</b></span>"
+            f"    <span class='chip'>Telemetry: <b>{len(st.trace)} steps</b></span>"
+            f"  </div>"
+            f"  <div class='terminal-title'>AGENT REASONING AUDIT LOG</div>"
+            f"</div>"
+            f"<div class='terminal-window'><div class='scroll'><div>{rows}</div></div></div>")
 
 
 def render_feedback(grades: List[GradeResult], note: str) -> str:
     out = []
     for i, g in enumerate(grades, 1):
         if not g.answered:
-            out.append(f"### Q{i}: {g.topic}\nSkipped. Reference answer: {g.model_answer}\n")
+            out.append(f"### Q{i}: {g.topic}\n*Skipped.*\n\n> **Reference Model Answer:** {g.model_answer}\n")
             continue
-        ok = "; ".join(g.correct) or "nothing yet"
-        miss = "; ".join(g.missing) or "nothing"
-        out.append(f"### Q{i}: {g.topic} ({g.score}/10, graded by {g.source})\n"
-                   f"1. **What you got right:** {ok}\n2. **What was missing:** {miss}\n3. **Diagnosis:** {g.misconception}\n"
-                   f"4. **Do next:** {g.next_step}\n\n> **Model answer:** {g.model_answer}\n")
+        ok = "; ".join(g.correct) or "None identified"
+        miss = "; ".join(g.missing) or "None"
+        out.append(f"### Q{i}: {g.topic} &mdash; Score: `{g.score}/10` *(Graded via {g.source})*\n"
+                   f"- **Demonstrated Concepts:** {ok}\n"
+                   f"- **Missing Knowledge Gaps:** {miss}\n"
+                   f"- **Diagnostic Feedback:** {g.misconception}\n"
+                   f"- **Recommended Next Step:** {g.next_step}\n\n"
+                   f"> **Reference Model Answer:** {g.model_answer}\n")
     if note:
-        out.append(f"---\n**Agent action:** {note}")
+        out.append(f"---\n**Orchestrator Rebalancing Note:** {note}")
     return "\n".join(out)
 
 
 def view(o: Optional[Orchestrator]) -> tuple:
     """(timeline, table, summary, analytics, trace)"""
     if o is None or o.state.plan is None:
-        return (EMPTY, "_No plan yet. Start in the first tab._", EMPTY, EMPTY, render_trace(o))
+        return (EMPTY, "_No study plan generated yet. Synthesize your plan in the first tab._", EMPTY, EMPTY, render_trace(o))
     st = o.state
     return (render_timeline(st), render_table(st, o.horizon), render_summary(st), render_analytics(st), render_trace(o))
 
+
 # %%
-# Cell 6: Gradio UI and launch
+# Cell 6: Portfolio Design System, Theme, CSS and Gradio App
 CSS = """
-.gradio-container{max-width:1180px!important;margin:auto}
-.hero{background:linear-gradient(115deg,#0b3b3c,#0f766e 60%,#b45309);color:#fff;padding:22px 26px;border-radius:14px;margin-bottom:8px}
-.hero h1{margin:0;font-size:1.75rem;color:#fff}.hero p{margin:6px 0 0;opacity:.92;max-width:70ch}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:8px 0}
-.card{background:var(--background-fill-secondary,#f8fafc);border:1px solid var(--border-color-primary,#e2e8f0);border-radius:10px;padding:10px 12px}
-.card .v{font-size:1.45rem;font-weight:700}.card .k{font-size:.78rem;opacity:.7}
-.box{border:1px solid var(--border-color-primary,#e2e8f0);border-radius:10px;padding:10px 14px;margin:8px 0}
-.box.warn{border-color:#d97706;background:rgba(217,119,6,.08)}.box table{width:100%;border-collapse:collapse}
-.box td,.box th{padding:4px 6px;text-align:left;border-bottom:1px solid var(--border-color-primary,#e2e8f0);font-size:.88rem}
-.muted{opacity:.65;font-size:.85rem}
-.chip{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--border-color-primary,#cbd5e1);border-radius:999px;padding:2px 10px;margin:2px 4px 2px 0;font-size:.8rem}
-.chip i,.bl i{width:10px;height:10px;border-radius:50%;display:inline-block}
-.legend{margin:4px 0}
-.barrow{display:grid;grid-template-columns:minmax(150px,230px) 1fr 44px;gap:8px;align-items:center;margin:3px 0;font-size:.85rem}
-.bl{display:flex;align-items:center;gap:6px}.bar{height:9px;border-radius:5px;background:rgba(100,116,139,.2);overflow:hidden}.bar div{height:100%}
-.bp{text-align:right;font-variant-numeric:tabular-nums}
-.tl{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:6px}
-.tl .hd{font-size:.72rem;text-align:center;opacity:.6}
-.tl .day{min-height:62px;border:1px solid var(--border-color-primary,#e2e8f0);border-radius:8px;padding:4px 6px;background:var(--background-fill-secondary,#f8fafc)}
-.tl .today{outline:2.5px solid #0f766e}.tl .past{opacity:.6}.tl .exam{background:linear-gradient(135deg,#fde68a,#fdba74);color:#1f2937}
-.tl .n{font-size:.72rem;opacity:.75}.dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
-.dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-sizing:border-box}
-.dot.missed{opacity:.4;outline:1.5px solid #dc2626}.dot.done{opacity:.45}.ex{font-weight:700;font-size:.8rem}
-.scroll{max-height:680px;overflow:auto;display:flex;flex-direction:column-reverse;border:1px solid var(--border-color-primary,#e2e8f0);border-radius:10px;padding:6px}
-.tr{display:grid;grid-template-columns:62px 118px 100px 1fr;gap:8px;padding:5px 6px;border-bottom:1px dashed var(--border-color-primary,#e2e8f0);font-size:.82rem;line-height:1.35}
-.tr .ts{opacity:.55;font-family:monospace}.tr .ag{font-weight:600}.tr .kd{font-weight:700}
-.tr.THOUGHT .kd{color:#7c3aed}.tr.ACTION .kd{color:#2563eb}.tr.OBSERVATION .kd{color:#059669}
-.tr.DECISION .kd{color:#d97706}.tr.MESSAGE .kd{color:#db2777}.tr.STATE .kd{color:#64748b}
-@media(max-width:700px){.tr{grid-template-columns:1fr}.barrow{grid-template-columns:1fr 1fr 40px}}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --primary-accent: #6366f1;
+  --secondary-accent: #06b6d4;
+  --emerald-accent: #10b981;
+  --amber-accent: #f59e0b;
+  --rose-accent: #f43f5e;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-border: rgba(226, 232, 240, 0.85);
+  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
+.gradio-container {
+  max-width: 1240px !important;
+  margin: auto !important;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Portfolio Hero Showcase */
+.portfolio-hero {
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 45%, #1e1b4b 80%, #0f766e 100%);
+  color: #ffffff;
+  padding: 30px 32px 24px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.portfolio-hero::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.portfolio-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.portfolio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #e2e8f0;
+}
+
+.portfolio-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.portfolio-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.avatar-icon {
+  font-size: 2rem;
+}
+
+.portfolio-title-group {
+  flex: 1;
+}
+
+.portfolio-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #38bdf8;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.portfolio-title {
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 2.1rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  margin: 0 !important;
+  color: #ffffff !important;
+  line-height: 1.15 !important;
+}
+
+.portfolio-subtitle {
+  margin: 8px 0 0 !important;
+  font-size: 0.94rem !important;
+  line-height: 1.5 !important;
+  color: #cbd5e1 !important;
+  max-width: 82ch;
+  font-weight: 400;
+}
+
+.portfolio-stats-ribbon {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ribbon-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat-icon {
+  font-size: 1.25rem;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.stat-val {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f8fafc;
+  display: block;
+}
+
+/* Pulse Dot */
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulseAnim 2s infinite;
+}
+
+.pulse-dot.green {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+@keyframes pulseAnim {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+/* Bento Stat Cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--card-shadow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  opacity: 0.85;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.card-ico {
+  font-size: 1.1rem;
+}
+
+.card .k {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+}
+
+.card .v {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Glassmorphic Content Boxes */
+.box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 14px 0;
+  box-shadow: var(--card-shadow);
+}
+
+.box-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1e293b;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  padding-bottom: 8px;
+}
+
+.box-title .ico {
+  font-size: 1.25rem;
+}
+
+.box-hero {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(6, 182, 212, 0.07));
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.coach-insight {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: #334155;
+  margin: 0;
+  font-weight: 500;
+}
+
+.box-warn {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+/* Empty Card Placeholder */
+.empty-card {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(248, 250, 252, 0.85);
+  border: 2px dashed rgba(203, 213, 225, 0.8);
+  border-radius: 16px;
+  margin: 16px 0;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* Portfolio Tables */
+.portfolio-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 8px;
+}
+
+.portfolio-table th {
+  background: rgba(241, 245, 249, 0.7);
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: left;
+}
+
+.portfolio-table td {
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.portfolio-table tr:hover td {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+/* Badge Pills */
+.subject-pill {
+  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.pct-pill {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f766e;
+}
+
+.priority-badge {
+  font-family: 'JetBrains Mono', monospace;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.score-pill {
+  display: inline-block;
+  background: rgba(6, 182, 212, 0.12);
+  color: #0891b2;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.mastery-shift {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #059669;
+}
+
+/* Skill Bars */
+.barrow {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr 50px;
+  gap: 12px;
+  align-items: center;
+  margin: 6px 0;
+  font-size: 0.88rem;
+}
+
+.bl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.sub-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.lbl-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.7);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bp {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.subject-section-head h4 {
+  margin: 16px 0 6px !important;
+  font-size: 0.94rem !important;
+  font-weight: 700 !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.weight-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+/* Timeline Calendar Grid */
+.tl {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tl .hd {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+}
+
+.tl .day {
+  min-height: 72px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 6px 8px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.tl .day:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.tl .day.empty {
+  background: transparent;
+  border-color: transparent;
+}
+
+.tl .today {
+  border: 2px solid #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.03) !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.25) !important;
+}
+
+.tl .past {
+  opacity: 0.55;
+  background: #f8fafc;
+}
+
+.tl .exam {
+  background: linear-gradient(135deg, #f59e0b, #ec4899) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.tl .n {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.tl .exam .n {
+  color: #ffffff;
+}
+
+.today-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #06b6d4;
+  color: #ffffff;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.ex-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 2px 4px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: transform 0.15s ease;
+}
+
+.dot:hover {
+  transform: scale(1.4);
+}
+
+.dot.missed {
+  opacity: 0.45;
+  outline: 2px solid #ef4444;
+}
+
+.dot.done {
+  opacity: 0.45;
+}
+
+.dot-rest {
+  font-size: 0.8rem;
+}
+
+.legend-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 500;
+}
+
+.chip i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.chip-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.legend-chip {
+  background: #ffffff;
+}
+
+.danger-chip {
+  border-color: #ef4444 !important;
+  color: #dc2626 !important;
+}
+
+.clean-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+
+.clean-list li {
+  padding: 5px 0;
+  font-size: 0.88rem;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+/* Agent Telemetry Terminal */
+.terminal-header {
+  background: #090d16;
+  color: #f8fafc;
+  padding: 12px 18px;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+}
+
+.terminal-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.terminal-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-badges .chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f1f5f9;
+  font-size: 0.75rem;
+}
+
+.terminal-window {
+  background: #0b1120;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+  padding: 8px;
+}
+
+.scroll {
+  max-height: 600px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 6px 10px;
+}
+
+.tr {
+  display: grid;
+  grid-template-columns: 70px 130px 110px 1fr;
+  gap: 10px;
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tr .ts {
+  opacity: 0.5;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+}
+
+.tr .ag {
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.kd-badge {
+  display: inline-block;
+  text-align: center;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.kd-THOUGHT { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+.kd-ACTION { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.kd-OBSERVATION { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4); }
+.kd-DECISION { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+.kd-MESSAGE { background: rgba(244, 114, 182, 0.2); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.4); }
+.kd-STATE { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
+
+.tr .tx {
+  word-break: break-word;
+}
+
+@media(max-width: 768px) {
+  .tr { grid-template-columns: 1fr; gap: 4px; }
+  .barrow { grid-template-columns: 1fr; }
+  .portfolio-hero-content { flex-direction: column; text-align: center; }
+  .portfolio-title { font-size: 1.6rem !important; }
+}
 """
 
-THEME = gr.themes.Soft(primary_hue="teal", secondary_hue="amber", neutral_hue="slate",
-                       font=[gr.themes.GoogleFont("DM Sans"), "system-ui", "sans-serif"])
+THEME = gr.themes.Soft(  # type: ignore
+    primary_hue="indigo",  # type: ignore
+    secondary_hue="cyan",  # type: ignore
+    neutral_hue="slate",  # type: ignore
+    font=[gr.themes.GoogleFont("Plus Jakarta Sans"), gr.themes.GoogleFont("Outfit"), "system-ui", "sans-serif"],  # type: ignore
+)
 
 DEMO_DEFAULTS = {  # subject: (include, confidence, quiz score, exam weight)
     "Mathematics": (True, 4, 52, 5), "Physics": (True, 2, 45, 4), "Chemistry": (True, 3, 68, 3),
@@ -1305,19 +2170,19 @@ def build_plan(orch, api_key, name, exam_str, target, hours, start_hour, *rows):
         days = (exam - date.today()).days
         if days < 2 or days > MAX_HORIZON_DAYS:
             raise ValueError(f"Exam date must be between 2 and {MAX_HORIZON_DAYS} days from today (you entered {days}).")
-        subs = []
-        for i, sname in enumerate(CURRICULUM):
-            inc, conf, score, wt = rows[4 * i: 4 * i + 4]
+        subs: List[SubjectInput] = []
+        for i, sname in enumerate(DEMO_DEFAULTS.keys()):
+            inc, conf, score, wt = rows[i * 4: (i + 1) * 4]
             if inc:
                 subs.append(SubjectInput(name=sname, confidence=int(conf), quiz_score=float(score), exam_weight=int(wt)))
         if not subs:
-            raise ValueError("Select at least one subject.")
-        prof = StudentProfile(name=(name or "Student").strip() or "Student", exam_date=exam, target_score=int(target),
-                              hours_per_day=float(hours), start_hour=int(start_hour), subjects=subs)
+            raise ValueError("Select at least one subject to study.")
+        prof = StudentProfile(name=(name or "Student").strip(), exam_date=exam, target_score=int(target),
+                               hours_per_day=float(hours), start_hour=int(start_hour), subjects=subs)
         o = Orchestrator()
         o.onboard(prof)
         mode = f"OpenAI {LLM.MODEL}" if LLM.live else "offline rule engine"
-        msg = f"**Plan v1 is ready** for {len(o.state.topics)} topics over {days} days (engine: {mode}). Open the **Schedule** tab."
+        msg = f"**Plan v1 is ready** for {len(o.state.topics)} topics over {days} days (engine: {mode}). Open the **Schedule & Roadmap** tab."
         return (o, msg, render_diag(o.state), *view(o))
     except Exception as exc:
         return (orch, f"**Could not build the plan.** {exc}", gr.update(), *[gr.update()] * 5)
@@ -1366,69 +2231,120 @@ def refresh_trace(orch):
     return render_trace(orch)
 
 
-with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Performance Agent") as demo:
+with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Cognitive Mastery OS") as demo:
     orch_state = gr.State(None)
-    gr.HTML("<div class='hero'><h1>AI Study Planner &amp; Performance Agent</h1>"
-            "<p>Three cooperating agents diagnose your gaps, build a spaced-repetition schedule, and rewrite it whenever life or your quiz scores change.</p></div>")
+
+    gr.HTML("""
+    <div class='portfolio-hero'>
+      <div class='portfolio-badge-row'>
+        <span class='portfolio-chip'><span class='pulse-dot green'></span> 3 Autonomous ReAct Agents</span>
+        <span class='portfolio-chip'>🧠 Bayesian Knowledge Tracing</span>
+        <span class='portfolio-chip'>⚡ Spaced Repetition (SM-2)</span>
+        <span class='portfolio-chip'>🎯 Dynamic Roadmap Optimization</span>
+      </div>
+      <div class='portfolio-hero-content'>
+        <div class='portfolio-avatar'>
+          <div class='avatar-ring'>
+            <span class='avatar-icon'>⚡</span>
+          </div>
+        </div>
+        <div class='portfolio-title-group'>
+          <div class='portfolio-eyebrow'>ACADEMIC PORTFOLIO &amp; MASTERY SYSTEM</div>
+          <h1 class='portfolio-title'>AI Study Planner &amp; Performance Agent</h1>
+          <p class='portfolio-subtitle'>An agentic pair-programming orchestrator coordinating Diagnostic, Scheduler, and Evaluator agents to analyze knowledge gaps, synthesize spaced-repetition schedules, and rebalance daily plans.</p>
+        </div>
+      </div>
+      <div class='portfolio-stats-ribbon'>
+        <div class='ribbon-stat'>
+          <span class='stat-icon'>🤖</span>
+          <div>
+            <span class='stat-label'>Agent Architecture</span>
+            <span class='stat-val'>3 Cooperating Agents</span>
+          </div>
+        </div>
+        <div class='ribbon-stat'>
+          <span class='stat-icon'>📚</span>
+          <div>
+            <span class='stat-label'>Curriculum Scale</span>
+            <span class='stat-val'>6 Domains · 24 Topics</span>
+          </div>
+        </div>
+        <div class='ribbon-stat'>
+          <span class='stat-icon'>📈</span>
+          <div>
+            <span class='stat-label'>Pacing Engine</span>
+            <span class='stat-val'>Ebbinghaus Ladder</span>
+          </div>
+        </div>
+        <div class='ribbon-stat'>
+          <span class='stat-icon'>🛡️</span>
+          <div>
+            <span class='stat-label'>Execution Mode</span>
+            <span class='stat-val'>Hybrid OpenAI / Rule Fallback</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    """)
 
     with gr.Tabs():
-        with gr.Tab("Onboarding & Diagnostic"):
+        with gr.Tab("📋 Portfolio Setup & Diagnostics"):
             with gr.Row():
                 with gr.Column(scale=2):
-                    api_key = gr.Textbox(label="OpenAI API key (optional)", type="password", placeholder="Leave empty to use the offline engine")
-                    s_name = gr.Textbox(label="Your name", value="Alex")
-                    s_exam = gr.Textbox(label="Exam date (YYYY-MM-DD)", value=(date.today() + timedelta(days=30)).isoformat())
-                    s_target = gr.Slider(50, 100, value=85, step=1, label="Target score (%)")
-                    s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Study hours per day")
-                    s_start = gr.Slider(5, 21, value=17, step=1, label="Daily start hour (24h clock)")
+                    api_key = gr.Textbox(label="OpenAI API Key (Optional)", type="password", placeholder="Paste sk-... or leave empty to use offline rule engine")
+                    s_name = gr.Textbox(label="Student Name", value="Alex")
+                    s_exam = gr.Textbox(label="Target Exam Date (YYYY-MM-DD)", value=(date.today() + timedelta(days=30)).isoformat())
+                    s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
+                    s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
+                    s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
                 with gr.Column(scale=3):
-                    gr.Markdown("**Subjects.** Tick what you are studying, rate your confidence, and enter your latest diagnostic quiz score.")
+                    gr.Markdown("### 🎓 Subject Portfolio & Baseline Knowledge\nSelect your target subjects, self-rated confidence (1-5), and initial diagnostic score.")
                     subject_inputs: List[Any] = []
                     for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
                         with gr.Group():
                             with gr.Row():
                                 c_inc = gr.Checkbox(value=inc, label=sname, scale=2)
                                 c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=2)
-                                c_score = gr.Slider(0, 100, value=score, step=1, label="Quiz score (%)", scale=2)
-                                c_wt = gr.Slider(1, 5, value=wt, step=1, label="Exam weight (1-5)", scale=2)
+                                c_score = gr.Slider(0, 100, value=score, step=1, label="Quiz Score (%)", scale=2)
+                                c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
                         subject_inputs += [c_inc, c_conf, c_score, c_wt]
-            build_btn = gr.Button("Diagnose and build my plan", variant="primary", size="lg")
+            build_btn = gr.Button("🚀 Diagnose Skills & Synthesize Study Plan", variant="primary", size="lg")
             build_status = gr.Markdown()
             diag_html = gr.HTML(EMPTY)
 
-        with gr.Tab("Schedule"):
+        with gr.Tab("🗓️ Schedule & Roadmap"):
             summary_html = gr.HTML(EMPTY)
-            with gr.Accordion("Life happened? Rebalance the plan", open=True):
+            with gr.Accordion("⚡ Life Happened? Dynamic Schedule Rebalancing", open=True):
                 with gr.Row():
-                    a_missed = gr.Slider(0, 14, value=0, step=1, label="Days I missed")
-                    a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Fatigue (1 fresh, 5 exhausted)")
-                    a_hours = gr.Slider(0, 10, value=0, step=0.25, label="New hours per day (0 keeps current)")
-                a_note = gr.Textbox(label="What happened? (optional)", placeholder="e.g. caught a fever and lost two days")
+                    a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
+                    a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
+                    a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
+                a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. caught a fever, work deadline, or need more review")
                 with gr.Row():
-                    adapt_btn = gr.Button("Adapt schedule", variant="primary")
-                    done_btn = gr.Button("Complete today and advance")
+                    adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
+                    done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
                 adapt_msg = gr.Markdown()
             timeline_html = gr.HTML(EMPTY)
-            horizon = gr.Slider(7, 30, value=14, step=1, label="Days shown in the table")
-            table_md = gr.Markdown("_No plan yet. Start in the first tab._")
+            horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
+            table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the first tab._")
 
-        with gr.Tab("Quiz Hub"):
+        with gr.Tab("⚡ Quiz Arena & Evaluation"):
             with gr.Row():
                 with gr.Column(scale=3):
                     with gr.Row():
-                        q_n = gr.Slider(3, 6, value=4, step=1, label="Number of questions")
-                        q_btn = gr.Button("Generate quiz on my weakest topics", variant="primary")
-                    quiz_md = gr.Markdown("_Generate a quiz to begin._")
+                        q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions")
+                        q_btn = gr.Button("🎯 Generate Targeted Quiz on Weakest Topics", variant="primary")
+                    quiz_md = gr.Markdown("_Generate a quiz to begin assessment._")
                     ans_boxes = [gr.Textbox(lines=3, visible=False, label=f"Your answer to Q{i + 1}") for i in range(6)]
-                    submit_btn = gr.Button("Submit answers for grading", variant="primary")
+                    submit_btn = gr.Button("📤 Submit Answers for Cognitive Grading", variant="primary")
                     feedback_md = gr.Markdown()
                 with gr.Column(scale=2):
                     analytics_html = gr.HTML(EMPTY)
 
-        with gr.Tab("Agent Reasoning Trace"):
-            gr.Markdown("Every thought, tool call, observation, decision and inter-agent message, in order. Newest activity is at the bottom.")
+        with gr.Tab("🧠 Autonomous Agent Telemetry"):
+            gr.Markdown("### 🔍 Transparent Multi-Agent Cognitive Trace\nInspect every thought, action, tool invocation, observation, decision, and inter-agent message.")
             trace_html = gr.HTML(render_trace(None))
-            trace_btn = gr.Button("Refresh trace")
+            trace_btn = gr.Button("🔄 Refresh Telemetry Audit Stream")
 
     VIEW = [timeline_html, table_md, summary_html, analytics_html, trace_html]
     build_btn.click(build_plan, [orch_state, api_key, s_name, s_exam, s_target, s_hours, s_start, *subject_inputs],
