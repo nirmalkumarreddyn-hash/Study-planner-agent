@@ -38,120 +38,267 @@ SESSION_MIN, BREAK_MIN, LONG_BREAK_MIN = 45, 10, 20
 INTERVALS = [1, 3, 7, 14, 30]       # spaced-repetition ladder (days between reviews)
 MAX_HORIZON_DAYS = 180
 
-# Knowledge graph: subject -> topic -> (intrinsic difficulty 0..1, prerequisite topics)
+# B.Tech 2nd Year Term 1 Curriculum: subject -> topic -> (intrinsic difficulty 0..1, prerequisite topics)
 CURRICULUM: Dict[str, Dict[str, Tuple[float, List[str]]]] = {
-    "Mathematics": {
-        "Algebra & Functions": (0.4, []),
-        "Limits & Continuity": (0.6, ["Algebra & Functions"]),
-        "Differentiation": (0.7, ["Limits & Continuity"]),
-        "Integration": (0.8, ["Differentiation"]),
+    "Probability and Statistics": {
+        "Module I: Introduction to Statistics": (0.35, []),
+        "Module II: Introduction to Probability": (0.40, ["Module I: Introduction to Statistics"]),
+        "Module III: Random Variables": (0.50, ["Module II: Introduction to Probability"]),
+        "Module IV: Discrete Probability Distributions": (0.55, ["Module III: Random Variables"]),
+        "Module V: Continuous Probability Distributions": (0.60, ["Module III: Random Variables"]),
+        "Module VI: Sampling & Estimation": (0.65, ["Module V: Continuous Probability Distributions"]),
+        "Module VII: Testing of Hypothesis – I": (0.70, ["Module VI: Sampling & Estimation"]),
+        "Module VIII: Testing of Hypothesis – II": (0.75, ["Module VII: Testing of Hypothesis – I"]),
+        "Module IX: Correlation": (0.50, ["Module I: Introduction to Statistics"]),
+        "Module X: Regression": (0.65, ["Module IX: Correlation"]),
     },
-    "Physics": {
-        "Kinematics": (0.4, []),
-        "Newton's Laws": (0.6, ["Kinematics"]),
-        "Work, Energy & Power": (0.6, ["Newton's Laws"]),
-        "Electric Circuits": (0.7, []),
+    "DSA C++": {
+        "Module I: Introduction to C++ Programming": (0.35, []),
+        "Module II: Control Statements": (0.40, ["Module I: Introduction to C++ Programming"]),
+        "Module III: Arrays – 1D": (0.45, ["Module II: Control Statements"]),
+        "Module IV: Arrays – 2D": (0.55, ["Module III: Arrays – 1D"]),
+        "Module V: String Arrays": (0.50, ["Module III: Arrays – 1D"]),
+        "Module VI: Structures": (0.50, ["Module III: Arrays – 1D"]),
+        "Module VII: Data Structures performance Analysis": (0.65, ["Module III: Arrays – 1D"]),
+        "Module VIII: Stacks": (0.60, ["Module VII: Data Structures performance Analysis"]),
+        "Module IX: Queues": (0.60, ["Module VII: Data Structures performance Analysis"]),
+        "Module X: STL Fundamentals & Containers": (0.70, ["Module VIII: Stacks", "Module IX: Queues"]),
     },
-    "Chemistry": {
-        "Atomic Structure": (0.4, []),
-        "Chemical Bonding": (0.6, ["Atomic Structure"]),
-        "Stoichiometry": (0.7, ["Atomic Structure"]),
-        "Acids, Bases & pH": (0.7, ["Stoichiometry"]),
+    "Fundamentals of Artificial Intelligence": {
+        "Module - I: Introduction to Artificial Intelligence": (0.35, []),
+        "Module - II: Uninformed Search Strategies": (0.50, ["Module - I: Introduction to Artificial Intelligence"]),
+        "Module - III: Informed Search Strategies": (0.65, ["Module - II: Uninformed Search Strategies"]),
+        "Module - IV: Optimal Decisions in Games": (0.65, ["Module - III: Informed Search Strategies"]),
+        "Module - V: Inferences": (0.60, ["Module - I: Introduction to Artificial Intelligence"]),
+        "Module - VI: Knowledge Representation & Reasoning": (0.60, ["Module - V: Inferences"]),
+        "Module - VII: State Space Planning": (0.65, ["Module - III: Informed Search Strategies"]),
+        "Module - VIII: Uncertainty in AI": (0.65, ["Module - I: Introduction to Artificial Intelligence"]),
+        "Module - IX: General Model of Learning Agents": (0.55, ["Module - I: Introduction to Artificial Intelligence"]),
+        "Module - X: Applications of AI": (0.40, ["Module - I: Introduction to Artificial Intelligence"]),
     },
-    "Biology": {
-        "Cell Structure": (0.3, []),
-        "Genetics & Inheritance": (0.6, ["Cell Structure"]),
-        "Photosynthesis & Respiration": (0.7, ["Cell Structure"]),
-        "Evolution & Ecology": (0.5, ["Genetics & Inheritance"]),
-    },
-    "Computer Science": {
-        "Variables & Control Flow": (0.3, []),
-        "Data Structures": (0.6, ["Variables & Control Flow"]),
-        "Algorithms & Complexity": (0.8, ["Data Structures"]),
-        "Databases & SQL": (0.5, ["Variables & Control Flow"]),
-    },
-    "History": {
-        "Industrial Revolution": (0.4, []),
-        "World War I": (0.5, ["Industrial Revolution"]),
-        "World War II": (0.6, ["World War I"]),
-        "Cold War": (0.6, ["World War II"]),
+    "Advanced DBMS": {
+        "Module 1: Relational Query Languages & Extended ER Models": (0.50, []),
+        "Module 2: Fundamentals of Normalization": (0.55, ["Module 1: Relational Query Languages & Extended ER Models"]),
+        "Module 3: Advanced Normalization": (0.70, ["Module 2: Fundamentals of Normalization"]),
+        "Module 4: Transactions in DBMS": (0.60, ["Module 1: Relational Query Languages & Extended ER Models"]),
+        "Module 5: Concurrency Control": (0.70, ["Module 4: Transactions in DBMS"]),
+        "Module 6: Storage and File Structure": (0.55, ["Module 1: Relational Query Languages & Extended ER Models"]),
+        "Module 7: Database Recovery Techniques": (0.65, ["Module 4: Transactions in DBMS"]),
+        "Module 8: Introduction to NoSQL Databases and MongoDB": (0.50, ["Module 1: Relational Query Languages & Extended ER Models"]),
+        "Module 9: Performing CRUD Operations in MongoDB": (0.50, ["Module 8: Introduction to NoSQL Databases and MongoDB"]),
+        "Module 10: Advanced Querying and Data Aggregation in MongoDB": (0.65, ["Module 9: Performing CRUD Operations in MongoDB"]),
     },
 }
 
-# Offline question bank: topic -> (question, model answer, [(concept label, "kw1|kw2|...")])
+# Offline diagnostic question bank: topic -> (question, model answer, [(concept label, "kw1|kw2|...")])
 QUESTION_BANK: Dict[str, Tuple[str, str, List[Tuple[str, str]]]] = {
-    "Algebra & Functions": ("Explain what the domain and range of a function are, and give an example of a function with a restricted domain.",
-        "Domain = all valid inputs, range = all resulting outputs. f(x)=sqrt(x) needs x >= 0; 1/x excludes x = 0.",
-        [("domain is the set of valid inputs", "input|x-value|x value|allowed"), ("range is the set of outputs", "output|y-value|y value|result"), ("a restricted-domain example", "square root|sqrt|1/x|denominator|division by zero|negative")]),
-    "Limits & Continuity": ("What does it mean for a function to be continuous at a point? State the conditions.",
-        "f(a) is defined, the limit as x->a exists (left = right), and the limit equals f(a).",
-        [("f(a) is defined", "defined|exists at"), ("the limit exists (left and right agree)", "limit exists|left and right|one-sided|limit as x"), ("the limit equals f(a)", "equal|same|= f(a)|equals f(a)")]),
-    "Differentiation": ("State the chain rule and use it to differentiate sin(x^2).",
-        "d/dx f(g(x)) = f'(g(x))*g'(x), so d/dx sin(x^2) = 2x*cos(x^2).",
-        [("derivative of the outer times derivative of the inner", "outer|inner|multiply|times|product"), ("inner derivative 2x", "2x"), ("the cos(x^2) factor", "cos")]),
-    "Integration": ("What does the Fundamental Theorem of Calculus say, and what is the integral of 2x dx?",
-        "Differentiation and integration are inverse operations; a definite integral is F(b)-F(a). The integral of 2x is x^2 + C.",
-        [("links derivatives and integrals as inverses", "inverse|antiderivative|opposite|connect|relationship"), ("definite integral evaluated at the bounds", "upper|lower|bounds|f(b)|difference|evaluate"), ("result x^2 + C", "x^2|x²|x squared|+ c|+c")]),
-    "Kinematics": ("State the equation relating final velocity, initial velocity, acceleration and time, and say when it applies.",
-        "v = u + at, valid for constant (uniform) acceleration.",
-        [("v = u + at", "v = u + at|v=u+at|u + at|u+at"), ("constant acceleration only", "constant|uniform"), ("meaning of the symbols", "initial|final|velocity")]),
-    "Newton's Laws": ("State Newton's second law and apply it to a 2 kg block pushed by a 10 N net force.",
-        "F = ma, so a = 10/2 = 5 m/s^2 in the direction of the net force.",
-        [("F = ma", "f = ma|f=ma|force equals mass|mass times acceleration|mass x acceleration"), ("uses the net force", "net force|resultant|unbalanced"), ("acceleration of 5 m/s^2", "5 m/s|5m/s|5 meters|acceleration of 5|a = 5|a=5")]),
-    "Work, Energy & Power": ("Define work, kinetic energy and power, with their formulas.",
-        "W = F*d*cos(theta); KE = 1/2 m v^2; P = W/t (rate of doing work, in watts).",
-        [("work = force x displacement", "force times|f·d|f x d|force × distance|force x distance|w = fd|w=fd|force and displacement"), ("KE = 1/2 m v^2", "½|1/2|0.5|mv^2|mv²"), ("power = work per unit time", "per unit time|w/t|rate|watt|work divided by time")]),
-    "Electric Circuits": ("State Ohm's law and explain how total resistance differs for series and parallel resistors.",
-        "V = IR. Series resistances add; for parallel, 1/R = 1/R1 + 1/R2, so the total is smaller than any branch.",
-        [("V = IR", "v = ir|v=ir|voltage equals|current times resistance|v = i r"), ("series resistances add", "series|add|sum"), ("parallel uses reciprocals and gives a lower total", "parallel|reciprocal|1/r|less than|decreases")]),
-    "Atomic Structure": ("Describe the subatomic particles, their charges and where they are found.",
-        "Protons (+) and neutrons (neutral) sit in the nucleus; electrons (-) occupy shells around it.",
-        [("protons are positive", "proton|positive"), ("neutrons are neutral", "neutron|neutral|no charge"), ("electrons are negative and orbit in shells", "electron|negative|shell|orbit|cloud")]),
-    "Chemical Bonding": ("Compare ionic and covalent bonding.",
-        "Ionic: electrons transferred between a metal and a non-metal. Covalent: electrons shared between non-metals. Ionic compounds usually have high melting points.",
-        [("ionic bonds transfer electrons", "transfer|ionic|give|donate"), ("covalent bonds share electrons", "shar|covalent"), ("a property or electronegativity contrast", "melting|conduct|electronegativity|metal|non-metal|nonmetal")]),
-    "Stoichiometry": ("Explain what a mole is and how to calculate moles from mass.",
-        "One mole is 6.022e23 particles; moles = mass / molar mass; balanced-equation coefficients give mole ratios.",
-        [("Avogadro's number", "6.022|avogadro|10^23|10²³"), ("moles = mass / molar mass", "molar mass|mass divided|mass/|÷"), ("mole ratios from the balanced equation", "ratio|coefficient|balanced|limiting")]),
-    "Acids, Bases & pH": ("Define pH and explain what pH 3 versus pH 9 tells you.",
-        "pH = -log10[H+]. pH 3 is acidic (high H+), pH 9 is basic/alkaline.",
-        [("pH = -log[H+]", "-log|negative log|log|h+|hydrogen ion|concentration"), ("pH 3 is acidic", "acid"), ("pH 9 is basic", "basic|alkaline|base")]),
-    "Cell Structure": ("Name three organelles and state the function of each.",
-        "Nucleus stores DNA; mitochondria make ATP; ribosomes build proteins.",
-        [("nucleus holds DNA", "nucleus|dna|genetic"), ("mitochondria produce energy", "mitochondri|atp|energy|powerhouse"), ("a third organelle with its job", "ribosome|protein|chloroplast|membrane|golgi|endoplasmic")]),
-    "Genetics & Inheritance": ("Explain dominant and recessive alleles using an Aa x Aa cross.",
-        "Offspring are 1 AA : 2 Aa : 1 aa, so the dominant phenotype appears 3:1.",
-        [("alleles come in pairs", "allele|gene|pair"), ("3:1 phenotype ratio", "3:1|three to one|75%|25%"), ("genotype versus phenotype", "genotype|phenotype|homozygous|heterozygous|dominant")]),
-    "Photosynthesis & Respiration": ("Give the inputs and outputs of photosynthesis and of aerobic respiration.",
-        "Photosynthesis: CO2 + water + light -> glucose + O2. Respiration: glucose + O2 -> CO2 + water + ATP.",
-        [("photosynthesis inputs (CO2, water, light)", "carbon dioxide|co2|water|light"), ("glucose and oxygen as products or reactants", "glucose|oxygen|o2"), ("respiration releases ATP", "atp|energy|mitochondri")]),
-    "Evolution & Ecology": ("Explain natural selection and give an example.",
-        "Heritable variation + differential survival and reproduction under selective pressure shifts trait frequencies over generations (e.g. antibiotic resistance).",
-        [("variation exists in a population", "variation|differ|diversity|mutation"), ("selective pressure favours survival", "surviv|fitness|environment|adapt|pressure"), ("traits are inherited over generations", "inherit|offspring|generation|pass|reproduc")]),
-    "Variables & Control Flow": ("What is the difference between a for loop and a while loop, and when would you use each?",
-        "for iterates a known sequence or count; while repeats until a condition fails, so you must update state to avoid an infinite loop.",
-        [("for loops iterate a known sequence", "for|iterate|known|sequence|range"), ("while loops depend on a condition", "while|condition|until|unknown"), ("risk of infinite loops", "infinite|terminate|update|break")]),
-    "Data Structures": ("Compare arrays and linked lists, and explain when a hash map is preferable.",
-        "Arrays give O(1) index access; linked lists give cheap insertion via pointers; hash maps give average O(1) lookup by key.",
-        [("arrays give O(1) indexed access", "index|o(1)|constant|contiguous|random access"), ("linked lists use nodes and pointers", "pointer|node|insert|link"), ("hash maps give fast key lookup", "hash|key|lookup|average o(1)")]),
-    "Algorithms & Complexity": ("Explain Big-O notation and compare binary search with linear search.",
-        "Big-O describes worst-case growth with input size. Binary search is O(log n) on sorted data; linear search is O(n).",
-        [("Big-O describes growth with input size", "growth|upper bound|worst|scale|input size"), ("binary search is O(log n) by halving", "log n|log(n)|logarithmic|halv"), ("linear search is O(n); binary needs sorted data", "o(n)|linear|sorted")]),
-    "Databases & SQL": ("Describe a SQL query that returns the three highest-paid employees, and explain what a primary key is.",
-        "SELECT * FROM employees ORDER BY salary DESC LIMIT 3. A primary key uniquely identifies each row.",
-        [("SELECT with ORDER BY and LIMIT", "select|order by|limit|top"), ("descending order", "desc|descending|highest"), ("primary key uniquely identifies a row", "primary key|unique|identif|row")]),
-    "Industrial Revolution": ("Describe two causes and two consequences of the Industrial Revolution.",
-        "Causes: coal and steam power, capital, agricultural change. Consequences: urbanisation and harsh factory conditions.",
-        [("a cause such as steam, coal or capital", "steam|coal|invention|capital|agricultur|enclosure|trade"), ("urbanisation or factories", "urban|city|cities|migration|factory|factories"), ("social consequences", "working class|child labour|child labor|pollution|wages|class|conditions")]),
-    "World War I": ("Explain the long-term causes of WWI and the immediate trigger.",
-        "Militarism, alliances, imperialism and nationalism; the trigger was the assassination of Archduke Franz Ferdinand in Sarajevo (1914).",
-        [("militarism or alliances", "militar|alliance|arms race"), ("imperialism or nationalism", "imperial|nationalis|colon"), ("the assassination of Franz Ferdinand", "assassinat|franz ferdinand|sarajevo|archduke")]),
-    "World War II": ("Identify key causes of WWII and one turning point of the war.",
-        "Treaty of Versailles resentment, the Depression, appeasement and Axis aggression; turning points include Stalingrad and Midway.",
-        [("Versailles or the Depression", "versailles|depression|treaty|reparations|economic"), ("appeasement or aggression", "appeasement|hitler|poland|aggression|fascis|nazi"), ("a turning point", "stalingrad|midway|d-day|normandy|el alamein|turning")]),
-    "Cold War": ("Define the Cold War and give two examples of proxy conflicts or crises.",
-        "A US-USSR rivalry short of direct war, fought via proxy wars (Korea, Vietnam, Afghanistan) and crises (Berlin, Cuba) under nuclear deterrence.",
-        [("US-USSR superpower rivalry", "soviet|ussr|united states|usa|superpower|capitalis|communis"), ("proxy wars or crises", "korea|vietnam|afghanistan|proxy|cuba"), ("nuclear deterrence or arms race", "nuclear|missile|mad|deterrence|arms race|berlin")]),
+    # --- Probability and Statistics ---
+    "Module I: Introduction to Statistics": (
+        "Distinguish between descriptive and inferential statistics, and define population versus sample.",
+        "Descriptive statistics summarizes and describes sample data (mean, median, variance). Inferential statistics draws conclusions and predictions about an entire population based on sample data. A population is the complete group of interest, whereas a sample is a representative subset.",
+        [("descriptive summarizes data", "descriptive|summarize|mean|median|variance"), ("inferential makes predictions about population", "inferential|predict|conclusion|inference|hypothesis"), ("population vs sample", "population|entire|sample|subset|representative")]
+    ),
+    "Module II: Introduction to Probability": (
+        "State the axioms of probability and explain what makes two events mutually exclusive.",
+        "Probability axioms: 1) Non-negativity P(E) >= 0. 2) Unit measure P(S) = 1 for sample space S. 3) Additivity for mutually exclusive events: P(A U B) = P(A) + P(B). Mutually exclusive events cannot occur simultaneously, meaning P(A and B) = 0.",
+        [("probability between 0 and 1 / non-negative", "non-negative|>= 0|between 0 and 1|p(s)=1"), ("mutually exclusive cannot co-occur", "cannot happen together|cannot occur|disjoint|simultaneously"), ("addition rule for disjoint events", "p(a)+p(b)|p(a u b)|intersection is zero|p(a and b)=0")]
+    ),
+    "Module III: Random Variables": (
+        "Define a random variable and contrast discrete vs continuous random variables.",
+        "A random variable is a mathematical function that maps outcomes of a random phenomenon to real numbers. Discrete random variables take distinct, countable values described by a PMF. Continuous random variables take any value within a continuous interval described by a PDF.",
+        [("mapping outcomes to real numbers", "function|real number|outcome|maps"), ("discrete has countable values / PMF", "discrete|countable|integers|pmf|probability mass"), ("continuous has interval values / PDF", "continuous|interval|uncountable|pdf|density")]
+    ),
+    "Module IV: Discrete Probability Distributions": (
+        "Compare Binomial and Poisson distributions, stating parameters and the condition where Poisson approximates Binomial.",
+        "Binomial models n independent Bernoulli trials with constant success probability p, parameters (n, p). Poisson models event counts over a fixed interval with parameter lambda. Poisson approximates Binomial when n is large, p is very small, and lambda = n*p is moderate.",
+        [("binomial parameters n and p", "binomial|trials|success|n and p|independent"), ("poisson rate parameter lambda", "poisson|rate|interval|lambda"), ("approximation condition large n small p", "large n|small p|lambda = np|np|rare")]
+    ),
+    "Module V: Continuous Probability Distributions": (
+        "Explain key properties of the Normal distribution and state the 68-95-99.7 empirical rule.",
+        "The Normal distribution is symmetric and bell-shaped centered at mean mu with variance sigma^2. The empirical rule states that ~68% of data falls within mu +- 1*sigma, ~95% within mu +- 2*sigma, and ~99.7% within mu +- 3*sigma.",
+        [("bell-shaped and symmetric about mean", "bell|symmetric|mean|gaussian|normal"), ("mean and variance parameters", "mu|sigma|standard deviation|variance"), ("68-95-99.7 empirical rule", "68|95|99.7|1 standard deviation|2 standard deviations")]
+    ),
+    "Module VI: Sampling & Estimation": (
+        "State the Central Limit Theorem and distinguish between a point estimate and a confidence interval.",
+        "Central Limit Theorem states that the distribution of sample means approaches normality as sample size n grows (n >= 30), regardless of population shape. A point estimate is a single numerical value, whereas a confidence interval provides an interval with a specified confidence level (e.g. 95%).",
+        [("Central Limit Theorem normality of sample mean", "central limit|clt|sample mean|normal distribution|n >= 30"), ("point estimate is a single value", "point estimate|single value|single number|sample mean"), ("confidence interval provides a range with confidence level", "confidence interval|interval|range|margin of error|confidence level|95%")]
+    ),
+    "Module VII: Testing of Hypothesis – I": (
+        "Define Null (H0) and Alternative (H1) hypotheses, and explain Type I vs Type II errors.",
+        "Null hypothesis (H0) assumes no significant effect or status quo; Alternative hypothesis (H1) posits an effect. Type I error (alpha) occurs when a true null hypothesis is incorrectly rejected (false positive). Type II error (beta) occurs when a false null hypothesis fails to be rejected (false negative).",
+        [("null vs alternative hypothesis", "null|h0|alternative|h1|no effect|difference"), ("Type I error is false positive / reject true H0", "type i|type 1|reject null when true|false positive|alpha"), ("Type II error is false negative / accept false H0", "type ii|type 2|fail to reject|false negative|beta")]
+    ),
+    "Module VIII: Testing of Hypothesis – II": (
+        "Compare Z-test, Student's t-test, and Chi-Square test with their application criteria.",
+        "Z-test applies to large samples (n >= 30) or when population variance is known. Student's t-test applies to small samples (n < 30) with unknown population variance. Chi-Square test evaluates categorical data for goodness-of-fit and test of independence.",
+        [("z-test for large sample or known variance", "z-test|z test|large sample|known variance|n >= 30"), ("t-test for small sample with unknown variance", "t-test|t test|small sample|unknown variance|degrees of freedom"), ("chi-square for categorical / independence / goodness of fit", "chi-square|chi square|categorical|independence|goodness of fit")]
+    ),
+    "Module IX: Correlation": (
+        "Define Pearson's correlation coefficient r, state its range, and explain why correlation does not imply causation.",
+        "Pearson's r measures the strength and direction of linear association between two variables, ranging from -1 to +1. Correlation does not imply causation because an observed association may be driven by lurking confounding variables or reverse causality.",
+        [("measures linear association", "linear|association|relationship|pearson"), ("range from -1 to +1", "-1 to 1|-1 to +1|range|negative|positive"), ("correlation vs causation", "causation|cause|confounding|lurking|does not imply")]
+    ),
+    "Module X: Regression": (
+        "Explain Simple Linear Regression and the Ordinary Least Squares (OLS) minimization principle.",
+        "Simple linear regression models y = beta0 + beta1*x + epsilon, where beta1 is the slope and beta0 is the intercept. Ordinary Least Squares (OLS) finds optimal parameters by minimizing the sum of squared vertical differences (residuals) between actual and predicted y values.",
+        [("linear regression formula slope and intercept", "y =|beta0|beta1|slope|intercept|dependent|independent"), ("Ordinary Least Squares minimizes sum of squared errors", "ordinary least squares|ols|minimize|sum of squared|residuals|errors"), ("residual is observed minus predicted", "residual|predicted|observed|fitted")]
+    ),
+
+    # --- DSA C++ ---
+    "Module I: Introduction to C++ Programming": (
+        "Outline the four stages of C++ compilation and explain why namespaces like std are used.",
+        "C++ compilation stages: Preprocessing (macro expansion, #include), Compiling (parsing to assembly), Assembling (creating object code .o/.obj), and Linking (binding libraries into an executable). Namespaces prevent naming collisions by scoping identifiers.",
+        [("compilation stages preprocessing compiling linking", "preprocess|compile|assemble|link|stages"), ("role of namespace", "namespace|scope|std|collision|name conflict"), ("executable generation", "executable|object code|binary")]
+    ),
+    "Module II: Control Statements": (
+        "Compare switch-case and if-else ladders in C++, and explain the necessity of the break statement.",
+        "If-else evaluates general boolean conditions sequentially. Switch-case evaluates integral/enum values using jump tables for O(1) branch dispatch. Without break, execution falls through into subsequent case statements.",
+        [("if-else evaluates boolean expressions", "if-else|if else|boolean|condition|expression"), ("switch uses integral constant / jump table", "switch|case|integral|constant|jump table|constant expression"), ("break prevents fallthrough", "break|fallthrough|terminate|exit")]
+    ),
+    "Module III: Arrays – 1D": (
+        "How is a 1D array allocated in memory in C++, and why is pointer offset arithmetic 0-indexed?",
+        "A 1D array is allocated as a contiguous block of memory. 0-indexing directly reflects pointer arithmetic: address(arr[i]) = base_address + i * sizeof(type), where index 0 has zero offset from base.",
+        [("contiguous memory allocation", "contiguous|consecutive|sequential|memory"), ("0-indexed as memory offset", "offset|base address|distance|0-indexed|pointer arithmetic"), ("element address formula", "sizeof|base +|index times size")]
+    ),
+    "Module IV: Arrays – 2D": (
+        "Explain Row-Major order storage for 2D arrays in C++ and state the element address calculation formula.",
+        "C++ stores 2D arrays in Row-Major order, placing elements of row 0 consecutively, followed by row 1. Address of arr[i][j] = base + (i * total_cols + j) * sizeof(element).",
+        [("C++ uses Row-Major order", "row-major|row major|c++ uses|row by row"), ("Column-Major stores column by column", "column-major|column major|column by column"), ("2D address formula", "base +|i * cols + j|row index times columns")]
+    ),
+    "Module V: String Arrays": (
+        "Contrast C-style char arrays with C++ std::string regarding null-termination and memory safety.",
+        "C-style strings are null-terminated ('\\0') char arrays with fixed buffer size, susceptible to buffer overflows. std::string is an OOP container that manages memory dynamically, tracks length explicitly, and prevents buffer overruns.",
+        [("C strings are null-terminated char arrays", "null-terminated|\\0|char array|c-style"), ("std::string is dynamic and manages memory", "std::string|dynamic|size|heap|reallocate|class"), ("safety against buffer overflows", "buffer overflow|safe|bounds|length")]
+    ),
+    "Module VI: Structures": (
+        "Explain struct in C++ and why memory structure padding / data alignment occurs.",
+        "A struct groups heterogeneous data fields (public by default in C++). Compilers insert structure padding bytes between fields to align variables to natural memory word boundaries, maximizing CPU cache access speed.",
+        [("user-defined type grouping heterogeneous data", "group|different types|heterogeneous|user-defined|struct"), ("public by default in C++", "public|default access|class vs struct"), ("padding and memory alignment for CPU word size", "padding|alignment|word size|offset|unused bytes|boundary")]
+    ),
+    "Module VII: Data Structures performance Analysis": (
+        "Define Big-O, Big-Omega, and Big-Theta asymptotic notations, and compare time vs space complexity.",
+        "Big-O gives an asymptotic upper bound (worst-case limit). Big-Omega gives an asymptotic lower bound (best-case). Big-Theta gives a tight bound. Time complexity measures instruction count growth with input size n; space complexity measures auxiliary memory.",
+        [("Big-O is upper bound", "big-o|big o|upper bound|worst-case|asymptotic upper"), ("Big-Omega lower bound and Big-Theta tight bound", "omega|lower bound|theta|tight bound"), ("time vs space complexity", "time complexity|space complexity|input size|memory|scale")]
+    ),
+    "Module VIII: Stacks": (
+        "Explain the LIFO principle of a Stack, its core operations with time complexity, and an application.",
+        "Stack operates on Last-In First-Out (LIFO). Primary operations push(), pop(), and top() run in O(1) time. Key applications include expression parsing, parentheses matching, function call stacks, and backtracking.",
+        [("LIFO principle", "lifo|last in first out|last-in"), ("push pop peek in O(1)", "push|pop|peek|top|o(1)|constant time"), ("applications like recursion or parentheses matching", "parentheses|expression|call stack|backtracking|undo")]
+    ),
+    "Module IX: Queues": (
+        "Explain the FIFO principle of a Queue and how a Circular Queue resolves the false overflow issue.",
+        "Queue operates on First-In First-Out (FIFO) with enqueue at rear and dequeue at front in O(1). In linear queues, freed front slots cannot be reused; a Circular Queue connects rear back to front using modulo arithmetic ((rear + 1) % capacity).",
+        [("FIFO principle", "fifo|first in first out|first-in"), ("circular queue avoids false overflow / uses modulo", "circular queue|modulo|reusable|false overflow|wrap around|% size"), ("deque supports operations at both ends", "deque|double-ended|both ends|front and rear")]
+    ),
+    "Module X: STL Fundamentals & Containers": (
+        "Describe the three main pillars of C++ STL and compare std::vector with std::list.",
+        "STL pillars: Containers (store data), Iterators (pointer abstraction for traversal), and Algorithms (generic functions like sort, find). std::vector provides contiguous dynamic memory with O(1) random access; std::list is a doubly linked list with O(1) bidirectional node insertions.",
+        [("three components containers iterators algorithms", "containers|iterators|algorithms|stl|standard template library"), ("vector dynamic array with O(1) random access", "vector|dynamic array|random access|contiguous|o(1) access"), ("list doubly linked list with O(1) insertion", "list|linked list|doubly linked|node|insertion")]
+    ),
+
+    # --- Fundamentals of Artificial Intelligence ---
+    "Module - I: Introduction to Artificial Intelligence": (
+        "Define an intelligent agent in AI and explain the Turing Test criterion.",
+        "An intelligent agent perceives its environment via sensors and acts rationally via actuators to maximize expected performance. The Turing Test posits that a computer is intelligent if an interrogator cannot distinguish its conversational replies from a human's.",
+        [("acting rationally / rational agent", "rational|agent|percept|action|goal|environment"), ("Turing test conversational indistinguishability", "turing test|imitation game|human|interrogator|indistinguishable"), ("thinking vs acting humanly vs rationally", "humanly|rationally|thinking|acting")]
+    ),
+    "Module - II: Uninformed Search Strategies": (
+        "Compare Breadth-First Search (BFS) and Depth-First Search (DFS) on completeness, optimality, and memory.",
+        "BFS expands shallowest nodes first using a FIFO queue; it is complete and optimal (for unit step costs), but requires O(b^d) exponential memory. DFS expands deepest nodes using a LIFO stack; it is not complete or optimal, but uses modest O(b*m) linear memory.",
+        [("BFS complete and optimal with O(b^d) space", "bfs|breadth-first|queue|complete|optimal|exponential space|o(b^d)"), ("DFS linear space O(bm) but not optimal", "dfs|depth-first|stack|linear space|o(bm)|not optimal"), ("branching factor b and depth d", "branching factor|depth|space complexity")]
+    ),
+    "Module - III: Informed Search Strategies": (
+        "Explain A* search evaluation function f(n) = g(n) + h(n) and the admissibility property of heuristics.",
+        "A* evaluates nodes by f(n) = g(n) + h(n), where g(n) is actual cost from root to n, and h(n) is estimated heuristic cost to goal. An admissible heuristic never overestimates the actual cost (h(n) <= h*(n)), guaranteeing A* search optimality.",
+        [("f(n) = g(n) + h(n) formula", "f(n)|g(n)|h(n)|actual cost|heuristic estimate"), ("admissible heuristic never overestimates", "admissible|never overestimates|underestimate|h(n) <= h*(n)|optimistic"), ("optimality of A*", "optimal|shortest path|priority queue")]
+    ),
+    "Module - IV: Optimal Decisions in Games": (
+        "Explain the Minimax decision rule for two-player zero-sum games and how Alpha-Beta pruning improves speed.",
+        "Minimax maximizes utility for MAX while anticipating MIN will choose moves minimizing MAX's payoff. Alpha-Beta pruning prunes branches that cannot influence the final decision when alpha >= beta, allowing search to twice the depth in the same time.",
+        [("Minimax for zero-sum two-player games", "minimax|zero-sum|max|min|payoff|utility"), ("Alpha-Beta pruning cuts redundant branches", "alpha-beta|pruning|prune|cutoff|alpha >= beta|efficiency"), ("doubling search depth", "depth|branching factor|evaluation")]
+    ),
+    "Module - V: Inferences": (
+        "State Modus Ponens and explain the Resolution refutation rule in propositional logic.",
+        "Modus Ponens: from P and (P -> Q), infer Q. Resolution rule takes two clauses containing complementary literals (A v B) and (~A v C) and produces resolvent (B v C); proof by contradiction repeatedly applies resolution until an empty clause is derived.",
+        [("Modus Ponens if P and P implies Q then Q", "modus ponens|p implies q|implication|infer q"), ("Resolution resolves complementary literals", "resolution|complementary literals|clause|resolvent|refutation"), ("proof by refutation / contradiction", "refutation|contradiction|empty clause")]
+    ),
+    "Module - VI: Knowledge Representation & Reasoning": (
+        "Contrast Propositional Logic with First-Order Logic (FOL) regarding predicates and quantifiers.",
+        "Propositional logic represents facts as atomic boolean propositions without internal structure. First-Order Logic (FOL) models the world using objects, relations (predicates), functions, and quantifiers (Universal forall, Existential exists), enabling expressiveness.",
+        [("propositional logic lacks objects and relations", "propositional|facts|true or false|boolean"), ("First-Order Logic uses predicates and objects", "first-order|fol|predicates|objects|relations"), ("Universal and Existential quantifiers", "quantifiers|forall|exists|universal|existential")]
+    ),
+    "Module - VII: State Space Planning": (
+        "Describe the STRIPS planning formalism: states, goals, preconditions, and effects.",
+        "STRIPS represents states as conjunctions of function-free ground literals. Goals are desired literal states. Operators consist of Preconditions (must hold before action execution) and Effects containing Add lists (new literals) and Delete lists (retracted literals).",
+        [("STRIPS components states actions goals", "strips|state|action|goal|planning"), ("Preconditions required before action", "precondition|must hold|prerequisite"), ("Add list and Delete list effects", "add list|delete list|effects|literals")]
+    ),
+    "Module - VIII: Uncertainty in AI": (
+        "How do Bayesian Networks represent joint probability distributions compactly using DAGs?",
+        "A Bayesian Network is a Directed Acyclic Graph (DAG) whose nodes represent random variables and directed arcs represent conditional dependencies. It factorizes the joint distribution as P(X1..Xn) = Product P(Xi | Parents(Xi)), exploiting conditional independence.",
+        [("Directed Acyclic Graph (DAG)", "dag|directed acyclic graph|nodes|edges"), ("nodes as variables edges as dependencies", "random variables|conditional|causal|parents"), ("compact factorization product of P(Xi|Parents)", "factorization|product|parents|joint probability|compact")]
+    ),
+    "Module - IX: General Model of Learning Agents": (
+        "Explain the roles of Critic, Learning Element, Performance Element, and Problem Generator.",
+        "Performance Element executes actions based on percepts. Critic evaluates agent success against an external performance benchmark. Learning Element modifies performance components based on critic feedback. Problem Generator proposes exploratory actions.",
+        [("Performance Element selects actions", "performance element|action|external|selects"), ("Critic evaluates against performance standard", "critic|evaluates|feedback|standard"), ("Learning Element improves and Problem Generator explores", "learning element|problem generator|exploration|sub-goals|improve")]
+    ),
+    "Module - X: Applications of AI": (
+        "Discuss modern AI applications in NLP and Computer Vision, and highlight a major ethical challenge.",
+        "Applications include Large Language Models and machine translation in NLP, and autonomous vehicle perception and medical radiology imaging in Computer Vision. Major ethical concerns involve algorithmic bias, privacy, hallucination risks, and accountability.",
+        [("NLP application translation or LLMs", "nlp|natural language|llm|translation|chat"), ("Vision application autonomous vehicles or diagnosis", "computer vision|vision|medical|autonomous|driving|image"), ("ethical issues bias fairness safety", "bias|ethics|fairness|privacy|accountability")]
+    ),
+
+    # --- Advanced DBMS ---
+    "Module 1: Relational Query Languages & Extended ER Models": (
+        "Compare procedural Relational Algebra with declarative Relational Calculus, and explain EER Specialization vs Generalization.",
+        "Relational Algebra specifies procedural operations (select sigma, project pi, join). Relational Calculus specifies declarative query conditions without execution sequence. In EER models, Specialization is top-down defining subclasses; Generalization is bottom-up merging entities.",
+        [("Relational Algebra is procedural", "relational algebra|procedural|how|operators|sigma|project|join"), ("Relational Calculus is declarative", "relational calculus|declarative|what|tuple|domain"), ("Specialization top-down vs Generalization bottom-up", "specialization|generalization|extended er|eer|subclass|superclass|top-down|bottom-up")]
+    ),
+    "Module 2: Fundamentals of Normalization": (
+        "Explain 1NF, 2NF, and 3NF conditions and the anomalies they eliminate.",
+        "1NF mandates atomic values and eliminates repeating groups. 2NF requires 1NF and removes partial functional dependencies (all non-prime attributes fully dependent on candidate keys). 3NF requires 2NF and eliminates transitive functional dependencies.",
+        [("1NF atomic values no repeating groups", "1nf|first normal form|atomic|repeating groups"), ("2NF eliminates partial dependency", "2nf|second normal form|partial dependency|full functional dependency"), ("3NF eliminates transitive dependency", "3nf|third normal form|transitive dependency|non-key")]
+    ),
+    "Module 3: Advanced Normalization": (
+        "Define Boyce-Codd Normal Form (BCNF) and 4NF, explaining when 3NF is insufficient.",
+        "BCNF requires that for every functional dependency X -> Y, X must be a superkey. 3NF is insufficient when a non-superkey determines a prime attribute. 4NF eliminates non-trivial Multi-Valued Dependencies (MVDs) where X ->-> Y exists without X being a superkey.",
+        [("BCNF requires determinant X to be a superkey", "bcnf|boyce-codd|superkey|determinant|x is a superkey"), ("3NF allows prime attributes on RHS violating BCNF", "3nf allows|prime attribute|candidate key|violates bcnf"), ("4NF eliminates multivalued dependencies", "4nf|fourth normal form|multivalued|mvd|x ->-> y")]
+    ),
+    "Module 4: Transactions in DBMS": (
+        "State and define the ACID properties of database transactions.",
+        "Atomicity: all transaction steps complete or none do (all-or-nothing rollback). Consistency: preserves all database integrity constraints. Isolation: concurrent executions yield results equivalent to serial execution. Durability: committed updates persist permanently across crashes.",
+        [("Atomicity all or nothing", "atomicity|all or nothing|abort|rollback"), ("Consistency preserves integrity constraints", "consistency|integrity|valid state|constraints"), ("Isolation and Durability", "isolation|concurrent|interference|durability|persist|crash|committed")]
+    ),
+    "Module 5: Concurrency Control": (
+        "Explain Two-Phase Locking (2PL) and compare Strict 2PL vs Rigorous 2PL.",
+        "2PL enforces a Growing Phase (locks acquired, none released) and Shrinking Phase (locks released, none acquired). Strict 2PL holds exclusive (X) locks until transaction completion, preventing cascading rollbacks; Rigorous 2PL holds all shared and exclusive locks until completion.",
+        [("Growing phase acquires locks only", "growing phase|acquire locks|obtain locks|cannot release"), ("Shrinking phase releases locks only", "shrinking phase|release locks|cannot acquire"), ("guarantees conflict serializability", "serializability|conflict serializable|lock point")]
+    ),
+    "Module 6: Storage and File Structure": (
+        "Compare Primary Index, Secondary Index, and Dense vs Sparse indexing in database storage.",
+        "A Primary Index is ordered on the physical sorting key of the file; a Secondary Index indexes non-ordered attributes. A Dense index has an entry for every record in the data file; a Sparse index has entries only for selected blocks, reducing index size.",
+        [("Primary index on ordered field", "primary index|ordered|ordering key|clustered"), ("Secondary index on non-ordered field", "secondary index|non-ordering|unclustered"), ("Dense has entry per record sparse per block", "dense|sparse|every record|every search key|block")]
+    ),
+    "Module 7: Database Recovery Techniques": (
+        "Explain Write-Ahead Logging (WAL) and how Checkpointing accelerates system recovery.",
+        "Write-Ahead Logging (WAL) requires log records describing changes to be flushed to stable storage before corresponding dirty data pages reach disk. Checkpoints periodically write all dirty buffers and a checkpoint record, bounding recovery scan time.",
+        [("Write-Ahead Logging log before data write", "write-ahead|wal|log before|stable storage|redo undo"), ("Checkpoints limit recovery log scan", "checkpoint|dirty buffers|flush|recovery time|speed up"), ("Redo and Undo mechanisms", "redo|undo|committed|uncommitted")]
+    ),
+    "Module 8: Introduction to NoSQL Databases and MongoDB": (
+        "Outline the four categories of NoSQL databases and describe MongoDB's document-oriented architecture.",
+        "NoSQL categories: Document, Key-Value, Column-Family, and Graph. MongoDB stores flexible, semi-structured BSON (Binary JSON) documents inside Collections without fixed schemas, offering high horizontal scalability and dynamic indexing.",
+        [("four NoSQL types document key-value column graph", "document|key-value|column|graph|nosql|mongodb|redis|cassandra"), ("MongoDB uses BSON/JSON documents in collections", "bson|json|binary json|document|collection|schema-less|flexible"), ("advantages like horizontal scaling", "scaling|sharding|horizontal|nested")]
+    ),
+    "Module 9: Performing CRUD Operations in MongoDB": (
+        "Provide MongoDB shell commands for Create, Read, Update, and Delete operations.",
+        "Create: db.users.insertOne({name: 'Alex', term: 1}) or insertMany([...]). Read: db.users.find({term: 1}). Update: db.users.updateOne({name: 'Alex'}, {$set: {score: 90}}). Delete: db.users.deleteOne({name: 'Alex'}).",
+        [("insertOne and insertMany for Create", "insertone|insertmany|insert|create"), ("find and findOne for Read", "find|findone|query|read"), ("updateOne with $set and deleteOne for Update/Delete", "updateone|updatemany|$set|update|deleteone|deletemany|delete")]
+    ),
+    "Module 10: Advanced Querying and Data Aggregation in MongoDB": (
+        "Explain MongoDB's Aggregation Pipeline and the functions of $match, $group, $project, and $sort.",
+        "The Aggregation Pipeline runs documents through sequential pipeline stages. $match filters matching documents; $project includes, computes, or renames fields; $group aggregates documents using accumulator expressions ($sum, $avg); $sort reorders the resulting stream.",
+        [("aggregation pipeline transforms documents through stages", "aggregation pipeline|pipeline|stages|sequential"), ("$match filters and $project selects fields", "$match|filter|$project|reshape|select"), ("$group aggregates by key with accumulators", "$group|accumulators|$sum|$avg|group by|$sort")]
+    ),
 }
 
 
@@ -351,8 +498,9 @@ class LLMClient:
         if key:
             os.environ["OPENAI_API_KEY"] = key
             try:
-                from openai import OpenAI  # type: ignore # pyrefly: ignore
-                self._client = OpenAI(api_key=key, timeout=30)  # type: ignore # pyrefly: ignore
+                # pyrefly: ignore [missing-import]
+                from openai import OpenAI
+                self._client = OpenAI(api_key=key, timeout=30)
             except Exception as exc:
                 self.last_error = str(exc)[:120]
 
@@ -1092,14 +1240,21 @@ class Orchestrator:
         return f"Scheduler replanned (v{v}). " + " | ".join(mem["notes"])
 
 # %%
-# Cell 5: rendering helpers (HTML and Markdown views) - Portfolio Design System
+
+
+# Cell 5: rendering helpers (HTML and Markdown views) - B.Tech 2nd Year Term 1
 SUBJECT_COLORS = {
-    "Mathematics": "#3b82f6",     # Modern vibrant blue
-    "Physics": "#06b6d4",         # Cyan / Electric Teal
-    "Chemistry": "#10b981",       # Emerald Green
-    "Biology": "#84cc16",         # Lime Green
-    "Computer Science": "#8b5cf6",# Violet / Electric Indigo
-    "History": "#f59e0b",         # Golden Amber
+    "Probability and Statistics": "#38bdf8",              # Cyan / Sky
+    "DSA C++": "#818cf8",                                 # Indigo / Modern Blue
+    "Fundamentals of Artificial Intelligence": "#f472b6", # Rose / Pink
+    "Advanced DBMS": "#fb923c",                           # Copper / Warm Amber
+}
+
+SUBJECT_ICONS = {
+    "Probability and Statistics": "📊",
+    "DSA C++": "💻",
+    "Fundamentals of Artificial Intelligence": "🧠",
+    "Advanced DBMS": "🗄️",
 }
 
 KIND_META = {
@@ -1107,7 +1262,7 @@ KIND_META = {
     "review": ("🔁", "Spaced Review"),
     "recall": ("🧠", "Active Recall"),
     "mock": ("📝", "Mock Exam"),
-    "break": ("☕", "Restorative Break"),
+    "break": ("☕", "Break"),
     "rest": ("🌙", "Rest Day"),
 }
 
@@ -1132,12 +1287,31 @@ CARD_ICONS = {
 }
 
 
+def parse_exam_date(date_str: str) -> date:
+    s = str(date_str).strip()
+    try:
+        return date.fromisoformat(s)
+    except Exception:
+        pass
+    formats = [
+        "%b %d, %Y", "%b %d %Y", "%B %d, %Y", "%B %d %Y",
+        "%d-%m-%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d %b %Y",
+        "%Y-%m-%d"
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except Exception:
+            pass
+    raise ValueError(f"Could not parse exam date '{s}'. Please use YYYY-MM-DD (e.g. 2026-11-01) or Month DD, YYYY (e.g. Nov 01, 2026).")
+
+
 def mcolor(m: float) -> str:
     if m < 0.45:
         return "linear-gradient(90deg, #ef4444, #f87171)"
     if m < 0.70:
         return "linear-gradient(90deg, #f59e0b, #fbbf24)"
-    return "linear-gradient(90deg, #10b981, #06b6d4)"
+    return "linear-gradient(90deg, #10b981, #38bdf8)"
 
 
 def cards(items: List[Tuple[str, str]]) -> str:
@@ -1145,35 +1319,33 @@ def cards(items: List[Tuple[str, str]]) -> str:
     for k, v in items:
         ico = CARD_ICONS.get(k, "📌")
         out.append(
-            f"<div class='card'>"
-            f"  <div class='card-top'><span class='card-ico'>{ico}</span><span class='k'>{E(k)}</span></div>"
-            f"  <div class='v'>{v}</div>"
+            f"<div class='dash-card'>"
+            f"  <div class='dash-card-header'><span class='dash-card-ico'>{ico}</span><span class='dash-card-k'>{E(k)}</span></div>"
+            f"  <div class='dash-card-v'>{v}</div>"
             f"</div>"
         )
-    return "<div class='cards'>" + "".join(out) + "</div>"
+    return "<div class='dash-cards-grid'>" + "".join(out) + "</div>"
 
 
 def bar(label: str, sub: str, m: float) -> str:
-    c = SUBJECT_COLORS.get(sub, "#6366f1")
+    c = SUBJECT_COLORS.get(sub, "#38bdf8")
     return (
-        f"<div class='barrow'>"
-        f"  <span class='bl'>"
-        f"    <span class='sub-dot' style='background:{c};box-shadow:0 0 8px {c}88'></span>"
-        f"    <span class='lbl-text'>{E(label)}</span>"
+        f"<div class='skill-bar-row'>"
+        f"  <span class='skill-bar-lbl'>"
+        f"    <span class='skill-dot' style='background:{c};box-shadow:0 0 8px {c}88'></span>"
+        f"    <span class='skill-title'>{E(label)}</span>"
         f"  </span>"
-        f"  <div class='bar-track'><div class='bar-fill' style='width:{m * 100:.0f}%;background:{mcolor(m)}'></div></div>"
-        f"  <span class='bp'>{m:.0%}</span>"
+        f"  <div class='skill-track'><div class='skill-fill' style='width:{m * 100:.0f}%;background:{mcolor(m)}'></div></div>"
+        f"  <span class='skill-pct'>{m:.0%}</span>"
         f"</div>"
     )
 
 
 EMPTY = (
-    "<div class='empty-card'>"
-    "  <div class='empty-icon'>📂</div>"
-    "  <div class='empty-text'>"
-    "    <b>Portfolio Data Not Initialized Yet</b><br>"
-    "    Configure your academic parameters and click <b>Diagnose &amp; Synthesize Study Plan</b> in the setup tab."
-    "  </div>"
+    "<div class='dash-empty-card'>"
+    "  <div class='empty-icon-wrap'>📂</div>"
+    "  <div class='empty-title'>No Study Plan Synthesized Yet</div>"
+    "  <div class='empty-desc'>Configure your subjects and parameters in <b>Setup &amp; Diagnostics</b>, then click <b>🚀 Diagnose &amp; Build My Plan</b>.</div>"
     "</div>"
 )
 
@@ -1184,35 +1356,54 @@ def render_diag(st: AppState) -> str:
         return EMPTY
     weak_rows = "".join(
         f"<tr>"
-        f"  <td><b>{E(n)}</b></td>"
-        f"  <td><span class='subject-pill' style='background:{SUBJECT_COLORS.get(st.topics[n].subject, '#475569')}22;color:{SUBJECT_COLORS.get(st.topics[n].subject, '#94a3b8')};border:1px solid {SUBJECT_COLORS.get(st.topics[n].subject, '#475569')}44'>{E(st.topics[n].subject)}</span></td>"
-        f"  <td><span class='pct-pill'>{st.topics[n].mastery:.0%}</span></td>"
-        f"  <td><code class='priority-badge'>{priority(st.topics[n]):.2f}</code></td>"
+        f"  <td class='td-topic'><b>{E(n)}</b></td>"
+        f"  <td><span class='subject-tag' style='background:{SUBJECT_COLORS.get(st.topics[n].subject, '#38bdf8')}22;color:{SUBJECT_COLORS.get(st.topics[n].subject, '#38bdf8')};border:1px solid {SUBJECT_COLORS.get(st.topics[n].subject, '#38bdf8')}44'>{E(st.topics[n].subject)}</span></td>"
+        f"  <td class='td-mastery'><span class='mastery-badge'>{st.topics[n].mastery:.0%}</span></td>"
+        f"  <td><span class='priority-pill'>{priority(st.topics[n]):.2f}</span></td>"
         f"</tr>"
         for n in st.weak
     )
     cal = "".join(
-        f"<span class='chip' style='border-color:{'#ef4444' if v > .25 else '#10b981' if abs(v) <= .25 else '#f59e0b'};background:{'rgba(239,68,68,0.1)' if v > .25 else 'rgba(16,185,129,0.1)' if abs(v) <= .25 else 'rgba(245,158,11,0.1)'}'>{E(k)}: {v:+.0%}</span>"
+        f"<span class='meta-chip' style='border-color:{'#ef4444' if v > .25 else '#10b981' if abs(v) <= .25 else '#f59e0b'};background:{'rgba(239,68,68,0.12)' if v > .25 else 'rgba(16,185,129,0.12)' if abs(v) <= .25 else 'rgba(245,158,11,0.12)'};color:{'#f87171' if v > .25 else '#34d399' if abs(v) <= .25 else '#fbbf24'}'>{E(k)}: {v:+.0%}</span>"
         for k, v in st.calibration.items()
     )
-    frag = "".join(f"<li class='frag-item'>⚠️ {E(f)}</li>" for f in st.fragile) or "<li class='muted-item'>✅ No fragile prerequisite foundations detected.</li>"
+    frag = "".join(f"<li class='fragile-item'>⚠️ {E(f)}</li>" for f in st.fragile) or "<li class='fragile-none'>✅ No fragile prerequisite foundations detected.</li>"
     bars = ""
     for s in prof.subjects:
-        c = SUBJECT_COLORS.get(s.name, "#6366f1")
+        c = SUBJECT_COLORS.get(s.name, "#38bdf8")
         bars += (
-            f"<div class='subject-section-head'>"
-            f"  <h4 style='color:{c}'><span class='section-bullet' style='background:{c};box-shadow:0 0 8px {c}88'></span>{E(s.name)}"
-            f"  <span class='weight-badge'>Exam Weight {s.exam_weight}/5 · Baseline {s.quiz_score:.0f}%</span></h4>"
-            f"</div>"
+            f"<div class='subject-matrix-group'>"
+            f"  <div class='matrix-head'>"
+            f"    <span class='matrix-bullet' style='background:{c};box-shadow:0 0 8px {c}88'></span>"
+            f"    <span class='matrix-title' style='color:{c}'>{E(s.name)}</span>"
+            f"    <span class='matrix-meta'>Weight: {s.exam_weight}/5 · Baseline Quiz: {s.quiz_score:.0f}%</span>"
+            f"  </div>"
             + "".join(bar(t.name, t.subject, t.mastery) for t in st.topics.values() if t.subject == s.name)
+            + "</div>"
         )
     return (
         cards([("Days to exam", str((prof.exam_date - st.cursor).days)), ("Baseline mastery", f"{st.baseline_mastery:.0%}"),
                ("Target", f"{prof.target_score}%"), ("Hours per day", f"{prof.hours_per_day:g} h")])
-        + f"<div class='box box-hero'><div class='box-title'><span class='ico'>💡</span><b>Cognitive Coach Assessment &amp; Strategy Brief</b></div><p class='coach-insight'>{E(st.insight)}</p></div>"
-        + f"<div class='box'><div class='box-title'><span class='ico'>🎯</span><b>Priority Focus Areas (Need &times; Gap &times; Exam Weight)</b></div><table class='portfolio-table'><thead><tr><th>Topic</th><th>Subject</th><th>Current Mastery</th><th>Priority Need</th></tr></thead><tbody>{weak_rows}</tbody></table></div>"
-        + f"<div class='box'><div class='box-title'><span class='ico'>⚖️</span><b>Metacognitive Calibration &amp; Foundation Risk</b></div><div style='margin-bottom:10px'><b>Confidence vs Measured Score Gap:</b><div class='chip-container'>{cal}</div></div><b>Prerequisite Vulnerabilities:</b><ul class='clean-list'>{frag}</ul></div>"
-        + f"<div class='box'><div class='box-title'><span class='ico'>📊</span><b>Comprehensive Competency Matrix</b></div>{bars}<p class='muted' style='margin-top:10px'>Topic mastery levels are dynamically calibrated by Bayesian evidence accumulation and quiz performance.</p></div>"
+        + f"<div class='dash-panel hero-coach-panel'>"
+        f"  <div class='dash-panel-title'><span class='title-ico'>💡</span><span>Cognitive Coach Assessment &amp; Strategy Brief</span></div>"
+        f"  <p class='coach-body-text'>{E(st.insight)}</p>"
+        f"</div>"
+        + f"<div class='dash-panel'>"
+        f"  <div class='dash-panel-title'><span class='title-ico'>🎯</span><span>Priority Focus Areas (Need &times; Gap &times; Exam Weight)</span></div>"
+        f"  <table class='dash-table'><thead><tr><th>TOPIC</th><th>SUBJECT</th><th>CURRENT MASTERY</th><th>PRIORITY NEED</th></tr></thead><tbody>{weak_rows}</tbody></table>"
+        f"</div>"
+        + f"<div class='dash-panel'>"
+        f"  <div class='dash-panel-title'><span class='title-ico'>⚖️</span><span>Metacognitive Calibration &amp; Foundation Risk</span></div>"
+        f"  <div class='meta-subhead'>Confidence vs Measured Score Gap:</div>"
+        f"  <div class='meta-chips-wrap'>{cal}</div>"
+        f"  <div class='meta-subhead' style='margin-top:14px'>Prerequisite Vulnerabilities:</div>"
+        f"  <ul class='dash-clean-list'>{frag}</ul>"
+        f"</div>"
+        + f"<div class='dash-panel'>"
+        f"  <div class='dash-panel-title'><span class='title-ico'>📊</span><span>Comprehensive Competency &amp; Knowledge Matrix</span></div>"
+        f"  {bars}"
+        f"  <p class='dash-note'>Mastery values update dynamically via Bayesian inference after each completed quiz.</p>"
+        f"</div>"
     )
 
 
@@ -1224,37 +1415,37 @@ def render_timeline(st: AppState) -> str:
     for b in plan.blocks:
         by_day.setdefault(b.day, []).append(b)
     first, cells = plan.start, []
-    cells += [f"<div class='hd'>{w}</div>" for w in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")]
-    cells += ["<div class='day empty'></div>"] * first.weekday()
+    cells += [f"<div class='cal-hd'>{w}</div>" for w in ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")]
+    cells += ["<div class='cal-day empty-slot'></div>"] * first.weekday()
     d = first
     while d <= prof.exam_date:
-        cls = "day" + (" today" if d == st.cursor else "") + (" past" if d < st.cursor else "") + (" exam" if d == prof.exam_date else "")
+        cls = "cal-day" + (" is-today" if d == st.cursor else "") + (" is-past" if d < st.cursor else "") + (" is-exam" if d == prof.exam_date else "")
         label = f"{d.day} {d:%b}" if (d.day == 1 or d == first) else str(d.day)
         dots = ""
         if d == prof.exam_date:
-            dots = "<div class='ex-badge'>🎯 Final Exam</div>"
+            dots = "<div class='exam-milestone-tag'>🎯 FINAL EXAM</div>"
         for b in by_day.get(d, []):
             if b.kind == "break":
                 continue
             if b.kind == "rest":
-                dots += "<span class='dot-rest' title='Rest & Recovery'>🌙</span>"
+                dots += "<span class='rest-indicator' title='Rest & Recovery'>🌙</span>"
                 continue
-            c = SUBJECT_COLORS.get(b.subject, "#6366f1")
+            c = SUBJECT_COLORS.get(b.subject, "#38bdf8")
             style = {"learn": f"background:{c};box-shadow:0 0 6px {c}88",
                      "review": f"background:transparent;border:2px solid {c}",
                      "recall": f"background:{c}44;border:1.5px dashed {c}",
                      "mock": f"background:{c};border-radius:2px;transform:rotate(45deg);box-shadow:0 0 6px {c}88"}.get(b.kind, f"background:{c}")
-            dots += f"<span class='dot {b.status}' style='{style}' title='{E(KIND_META.get(b.kind, ('', b.kind))[1])}: {E(b.topic)} ({b.status})'></span>"
-        today_tag = "<span class='today-tag'>TODAY</span>" if d == st.cursor else ""
-        cells.append(f"<div class='{cls}'><div class='day-header'><span class='n'>{label}</span>{today_tag}</div><div class='dots'>{dots}</div></div>")
+            dots += f"<span class='session-dot {b.status}' style='{style}' title='{E(KIND_META.get(b.kind, ('', b.kind))[1])}: {E(b.topic)} ({b.status})'></span>"
+        today_badge = "<span class='today-label'>TODAY</span>" if d == st.cursor else ""
+        cells.append(f"<div class='{cls}'><div class='cal-day-header'><span class='day-num'>{label}</span>{today_badge}</div><div class='dots-wrap'>{dots}</div></div>")
         d += timedelta(days=1)
-    legend = "".join(f"<span class='chip subject-chip'><i style='background:{c};box-shadow:0 0 6px {c}88'></i>{E(s)}</span>" for s, c in SUBJECT_COLORS.items() if any(t.subject == s for t in st.topics.values()))
-    key = ("<span class='chip legend-chip'>● Learn Session</span>"
-           "<span class='chip legend-chip'>◯ Spaced Review</span>"
-           "<span class='chip legend-chip'>◌ Active Recall</span>"
-           "<span class='chip legend-chip'>◆ Mock Test</span>"
-           "<span class='chip legend-chip danger-chip'>Red border: Missed</span>")
-    return f"<div class='legend-bar'><div class='legend'>{legend}</div><div class='legend'>{key}</div></div><div class='tl'>{''.join(cells)}</div>"
+    legend = "".join(f"<span class='dash-chip'><i style='background:{c};box-shadow:0 0 6px {c}88'></i>{E(s)}</span>" for s, c in SUBJECT_COLORS.items() if any(t.subject == s for t in st.topics.values()))
+    key = ("<span class='dash-chip'>● Learn Session</span>"
+           "<span class='dash-chip'>◯ Spaced Review</span>"
+           "<span class='dash-chip'>◌ Active Recall</span>"
+           "<span class='dash-chip'>◆ Mock Test</span>"
+           "<span class='dash-chip red-outline'>Red border: Missed</span>")
+    return f"<div class='cal-legend-bar'><div class='legend-cluster'>{legend}</div><div class='legend-cluster'>{key}</div></div><div class='cal-grid'>{''.join(cells)}</div>"
 
 
 def render_table(st: AppState, horizon: int) -> str:
@@ -1297,31 +1488,31 @@ def render_summary(st: AppState) -> str:
     done = sum(1 for b in plan.blocks if b.status == "done" and b.kind not in ("break", "rest"))
     out = cards([("Days left", str(max(0, (prof.exam_date - st.cursor).days))), ("Sessions ahead", str(left)), ("Sessions done", str(done)),
                  ("Topic coverage", f"{plan.coverage:.0%}"), ("Projected mastery", f"{plan.projected_mastery:.0%}"), ("Plan version", f"v{plan.version}")])
-    ms_items = "".join(f"<li class='milestone-item'><span class='milestone-check'>🏁</span> {E(m)}</li>" for m in plan.milestones)
-    out += f"<div class='box'><div class='box-title'><span class='ico'>🎯</span><b>Roadmap Milestones &amp; Targets</b></div><ul class='clean-list'>{ms_items}</ul></div>"
+    ms_items = "".join(f"<li class='dash-list-item'><span class='list-bullet-ico'>🏁</span> {E(m)}</li>" for m in plan.milestones)
+    out += f"<div class='dash-panel'><div class='dash-panel-title'><span class='title-ico'>🎯</span><span>Roadmap Milestones &amp; Targets</span></div><ul class='dash-clean-list'>{ms_items}</ul></div>"
     if plan.warnings:
-        warn_items = "".join(f"<li class='warn-item'>⚠️ {E(w)}</li>" for w in plan.warnings)
-        out += f"<div class='box box-warn'><div class='box-title'><span class='ico'>⚡</span><b>Capacity &amp; Pacing Alerts</b></div><ul class='clean-list'>{warn_items}</ul></div>"
-    ch_items = "".join(f"<li class='history-item'><span class='history-tag'>LOG</span> {E(c)}</li>" for c in plan.changelog[-5:])
-    out += f"<div class='box'><div class='box-title'><span class='ico'>📜</span><b>Plan Mutation History &amp; Changelog</b></div><ul class='clean-list'>{ch_items}</ul></div>"
+        warn_items = "".join(f"<li class='dash-list-item warn-item'><span class='list-bullet-ico'>⚠️</span> {E(w)}</li>" for w in plan.warnings)
+        out += f"<div class='dash-panel warn-panel'><div class='dash-panel-title'><span class='title-ico'>⚡</span><span>Capacity &amp; Pacing Alerts</span></div><ul class='dash-clean-list'>{warn_items}</ul></div>"
+    ch_items = "".join(f"<li class='dash-list-item'><span class='log-tag'>LOG</span> {E(c)}</li>" for c in plan.changelog[-5:])
+    out += f"<div class='dash-panel'><div class='dash-panel-title'><span class='title-ico'>📜</span><span>Plan Mutation History &amp; Changelog</span></div><ul class='dash-clean-list'>{ch_items}</ul></div>"
     return out
 
 
 def sparkline(vals: List[float]) -> str:
     if len(vals) < 2:
-        return "<p class='muted' style='text-align:center;padding:16px 0'>Submit 2 or more quizzes to render your score trajectory.</p>"
+        return "<p class='dash-muted' style='text-align:center;padding:16px 0'>Submit 2 or more quizzes to render your score trajectory.</p>"
     w, h = 340, 75
     pts = [(5 + i * (w - 10) / (len(vals) - 1), h - 8 - (max(0.0, min(10.0, v)) / 10) * (h - 16)) for i, v in enumerate(vals)]
     path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
     area = f"{path} L{pts[-1][0]:.1f},{h} L{pts[0][0]:.1f},{h} Z"
-    dots = "".join(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='3.5' fill='#06b6d4' stroke='#0f172a' stroke-width='2'/>" for x, y in pts)
+    dots = "".join(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='3.5' fill='#38bdf8' stroke='#0d1117' stroke-width='2'/>" for x, y in pts)
     return (f"<svg viewBox='0 0 {w} {h}' width='100%' height='{h}' style='overflow:visible'>"
             f"<defs><linearGradient id='sparkGrad' x1='0' y1='0' x2='0' y2='1'>"
-            f"<stop offset='0%' stop-color='#06b6d4' stop-opacity='0.35'/>"
-            f"<stop offset='100%' stop-color='#06b6d4' stop-opacity='0.0'/>"
+            f"<stop offset='0%' stop-color='#38bdf8' stop-opacity='0.35'/>"
+            f"<stop offset='100%' stop-color='#38bdf8' stop-opacity='0.0'/>"
             f"</linearGradient></defs>"
             f"<path d='{area}' fill='url(#sparkGrad)'/>"
-            f"<path d='{path}' fill='none' stroke='#06b6d4' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>{dots}</svg>")
+            f"<path d='{path}' fill='none' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>{dots}</svg>")
 
 
 def render_analytics(st: AppState) -> str:
@@ -1330,39 +1521,38 @@ def render_analytics(st: AppState) -> str:
     last = logs[-1].score * 10 if logs else 0
     out = cards([("Answers graded", str(len(logs))), ("Average score", f"{avg:.0f}%" if logs else "-"), ("Latest", f"{last:.0f}%" if logs else "-"),
                  ("Mastery now", f"{wmean(st.topics.values()):.0%}"), ("Since baseline", f"{(wmean(st.topics.values()) - st.baseline_mastery) * 100:+.0f} pts")])
-    out += f"<div class='box'><div class='box-title'><span class='ico'>📈</span><b>Score Trajectory (Scale 0-10)</b></div><div style='padding:6px 0'>{sparkline([l.score for l in logs[-12:]])}</div></div>"
+    out += f"<div class='dash-panel'><div class='dash-panel-title'><span class='title-ico'>📈</span><span>Score Trajectory (Scale 0-10)</span></div><div style='padding:6px 0'>{sparkline([l.score for l in logs[-12:]])}</div></div>"
     subj: Dict[str, List[float]] = {}
     for t in st.topics.values():
         subj.setdefault(t.subject, []).append(t.mastery)
-    out += "<div class='box'><div class='box-title'><span class='ico'>📊</span><b>Subject Mastery Overview</b></div>" + "".join(bar(s, s, sum(v) / len(v)) for s, v in sorted(subj.items()) if v) + "</div>"
+    out += "<div class='dash-panel'><div class='dash-panel-title'><span class='title-ico'>📊</span><span>Subject Mastery Overview</span></div>" + "".join(bar(s, s, sum(v) / len(v)) for s, v in sorted(subj.items()) if v) + "</div>"
     if logs:
-        rows = "".join(f"<tr><td><code>{E(l.ts)}</code></td><td><b>{E(l.topic)}</b></td><td><span class='score-pill'>{l.score:.1f}/10</span></td><td><span class='mastery-shift'>{l.mastery_before:.0%} &rarr; {l.mastery_after:.0%}</span></td></tr>" for l in reversed(logs[-8:]))
-        out += f"<div class='box'><div class='box-title'><span class='ico'>📝</span><b>Recent Evaluation Log</b></div><table class='portfolio-table'><thead><tr><th>Timestamp</th><th>Topic</th><th>Score</th><th>Mastery Delta</th></tr></thead><tbody>{rows}</tbody></table></div>"
+        rows = "".join(f"<tr><td><code>{E(l.ts)}</code></td><td style='color:#f8fafc'><b>{E(l.topic)}</b></td><td><span class='score-pill'>{l.score:.1f}/10</span></td><td><span class='mastery-shift'>{l.mastery_before:.0%} &rarr; {l.mastery_after:.0%}</span></td></tr>" for l in reversed(logs[-8:]))
+        out += f"<div class='dash-panel'><div class='dash-panel-title'><span class='title-ico'>📝</span><span>Recent Evaluation Log</span></div><table class='dash-table'><thead><tr><th>Timestamp</th><th>Topic</th><th>Score</th><th>Mastery Delta</th></tr></thead><tbody>{rows}</tbody></table></div>"
     return out
 
 
 def render_trace(o: Optional[Orchestrator]) -> str:
     mode = f"OpenAI {LLM.MODEL}" if LLM.live else "Offline ReAct Engine"
     if o is None or not o.state.trace:
-        return (f"<div class='empty-card'>"
-                f"  <div class='empty-icon'>🧠</div>"
-                f"  <div class='empty-text'>"
-                f"    <b>No Agent Activity Recorded Yet</b><br>"
-                f"    Engine: <code>{mode}</code>.<br>"
-                f"    Synthesize a plan or run a quiz to observe live multi-agent cognitive reasoning."
-                f"  </div>"
+        return (f"<div class='dash-empty-card'>"
+                f"  <div class='empty-icon-wrap'>🧠</div>"
+                f"  <div class='empty-title'>No Agent Activity Recorded Yet</div>"
+                f"  <div class='empty-desc'>Active Engine: <code>{mode}</code>.<br>Synthesize a plan or run a quiz to observe step-by-step agentic reasoning.</div>"
                 f"</div>")
     st = o.state
-    rows = "".join(f"<div class='tr {s.kind}'><span class='ts'>{s.ts}</span><span class='ag'>{E(s.agent)}</span><span class='kd-badge kd-{s.kind}'>{s.kind}</span><span class='tx'>{E(s.text)}</span></div>" for s in st.trace[-400:])
-    return (f"<div class='terminal-header'>"
-            f"  <div class='terminal-badges'>"
-            f"    <span class='chip live-chip'><span class='pulse-dot green'></span> State: <b>{st.phase.value}</b></span>"
-            f"    <span class='chip'>Engine: <b>{mode}</b></span>"
-            f"    <span class='chip'>Telemetry: <b>{len(st.trace)} steps</b></span>"
+    rows = "".join(f"<div class='tr-row {s.kind}'><span class='tr-ts'>{s.ts}</span><span class='tr-ag'>{E(s.agent)}</span><span class='tr-kd kd-{s.kind}'>{s.kind}</span><span class='tr-tx'>{E(s.text)}</span></div>" for s in st.trace[-400:])
+    return (f"<div class='terminal-wrap'>"
+            f"  <div class='terminal-top-bar'>"
+            f"    <div class='terminal-badges-row'>"
+            f"      <span class='term-pill pulse-pill'><span class='pulse-dot-green'></span> State: <b>{st.phase.value}</b></span>"
+            f"      <span class='term-pill'>Engine: <b>{mode}</b></span>"
+            f"      <span class='term-pill'>Steps: <b>{len(st.trace)}</b></span>"
+            f"    </div>"
+            f"    <div class='terminal-sys-title'>AGENT TELEMETRY CONSOLE</div>"
             f"  </div>"
-            f"  <div class='terminal-title'>AGENT REASONING AUDIT LOG</div>"
-            f"</div>"
-            f"<div class='terminal-window'><div class='scroll'><div>{rows}</div></div></div>")
+            f"  <div class='terminal-screen'><div class='terminal-scroller'>{rows}</div></div>"
+            f"</div>")
 
 
 def render_feedback(grades: List[GradeResult], note: str) -> str:
@@ -1393,770 +1583,1055 @@ def view(o: Optional[Orchestrator]) -> tuple:
 
 
 # %%
-# Cell 6: Portfolio Design System, Theme, CSS and Gradio App
+# Cell 6: B.Tech 2nd Year Term 1 Pure Dashboard Layout, Custom CSS & Gradio Blocks
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-:root {
-  --primary-accent: #6366f1;
-  --secondary-accent: #06b6d4;
-  --emerald-accent: #10b981;
-  --amber-accent: #f59e0b;
-  --rose-accent: #f43f5e;
-  --card-bg: rgba(255, 255, 255, 0.92);
-  --card-border: rgba(226, 232, 240, 0.85);
-  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-}
-
-.gradio-container {
-  max-width: 1240px !important;
-  margin: auto !important;
+/* Global Canvas Styling */
+body, .gradio-container {
+  background-color: #0b0f19 !important;
+  color: #f8fafc !important;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  max-width: 1360px !important;
+  margin: auto !important;
+  padding: 10px 18px !important;
 }
 
-/* Portfolio Hero Showcase */
-.portfolio-hero {
-  background: linear-gradient(135deg, #090d16 0%, #0f172a 45%, #1e1b4b 80%, #0f766e 100%);
-  color: #ffffff;
-  padding: 30px 32px 24px;
-  border-radius: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  overflow: hidden;
+/* Hide any footers, watermarks or branding */
+footer, .gradio-footer, .built-with {
+  display: none !important;
 }
 
-.portfolio-hero::before {
-  content: "";
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, transparent 70%);
-  pointer-events: none;
+/* Hero Banner Card exactly matching Image */
+.hero-image2 {
+  background: linear-gradient(105deg, #131b2c 0%, #172338 55%, #3d2319 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 18px !important;
+  padding: 26px 30px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-.portfolio-badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.portfolio-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #e2e8f0;
-}
-
-.portfolio-hero-content {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 22px;
-}
-
-.portfolio-avatar {
-  flex-shrink: 0;
-}
-
-.avatar-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #6366f1, #06b6d4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.25);
-}
-
-.avatar-icon {
-  font-size: 2rem;
-}
-
-.portfolio-title-group {
-  flex: 1;
-}
-
-.portfolio-eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #38bdf8;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-}
-
-.portfolio-title {
+.hero-title-group h1 {
   font-family: 'Outfit', sans-serif !important;
-  font-size: 2.1rem !important;
+  font-size: 2.25rem !important;
   font-weight: 800 !important;
-  letter-spacing: -0.02em !important;
-  margin: 0 !important;
+  letter-spacing: -0.01em !important;
   color: #ffffff !important;
-  line-height: 1.15 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
 }
 
-.portfolio-subtitle {
-  margin: 8px 0 0 !important;
-  font-size: 0.94rem !important;
-  line-height: 1.5 !important;
-  color: #cbd5e1 !important;
-  max-width: 82ch;
-  font-weight: 400;
+.hero-title-group p {
+  color: #94a3b8 !important;
+  font-size: 0.98rem !important;
+  margin: 6px 0 16px !important;
+  font-weight: 400 !important;
 }
 
-.portfolio-stats-ribbon {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+.hero-crests-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 18px !important;
+  margin-bottom: 18px !important;
 }
 
-.ribbon-stat {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.hero-chips-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 10px !important;
 }
 
-.stat-icon {
-  font-size: 1.25rem;
+.hero-pill-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 999px !important;
+  padding: 5px 14px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #e2e8f0 !important;
 }
 
-.stat-label {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: block;
-}
-
-.stat-val {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #f8fafc;
-  display: block;
-}
-
-/* Pulse Dot */
-.pulse-dot {
-  width: 8px;
-  height: 8px;
+.hero-pill-badge .dot-pink {
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  display: inline-block;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8;
-  animation: pulseAnim 2s infinite;
+  background: #f472b6;
+  box-shadow: 0 0 8px #f472b6;
 }
 
-.pulse-dot.green {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+.hero-pill-badge .dot-purple {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #c084fc;
+  box-shadow: 0 0 8px #c084fc;
 }
 
-@keyframes pulseAnim {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.7; }
+.hero-pill-badge .icon-copper {
+  color: #fb923c;
+  font-weight: 700;
+}
+
+/* Tab Navigation matching Image */
+.tabs {
+  border-bottom: 1px solid #1e293b !important;
+  background: transparent !important;
+}
+
+.tab-nav {
+  display: flex !important;
+  gap: 24px !important;
+  border-bottom: 1px solid #1e293b !important;
+  padding: 0 4px !important;
+  margin-bottom: 18px !important;
+  background: transparent !important;
+}
+
+.tab-nav button {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2.5px solid transparent !important;
+  color: #94a3b8 !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  padding: 10px 16px !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.tab-nav button:hover {
+  color: #cbd5e1 !important;
+}
+
+.tab-nav button.selected {
+  color: #38bdf8 !important;
+  border-bottom-color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+/* Card Header with Waves from Image */
+.card-header-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+.card-header-title {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.info-icon {
+  font-size: 0.88rem !important;
+  color: #64748b !important;
+  cursor: help !important;
+}
+
+/* Panels / Boxes in Dark Theme */
+.dash-panel, .box {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 18px 22px !important;
+  margin: 14px 0 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dash-panel-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-bottom: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+.title-ico {
+  font-size: 1.25rem !important;
+}
+
+.hero-coach-panel {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.06) 0%, rgba(30, 41, 59, 0.5) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+.coach-body-text {
+  font-size: 0.98rem !important;
+  line-height: 1.65 !important;
+  color: #cbd5e1 !important;
+  margin: 0 !important;
+}
+
+/* Performance Snapshot Card */
+.snapshot-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 18px 20px !important;
+  margin-top: 14px !important;
+}
+
+.snapshot-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 14px !important;
+}
+
+.snapshot-title {
+  font-size: 1.08rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.snapshot-legend {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  font-size: 0.8rem !important;
+  color: #94a3b8 !important;
+}
+
+.legend-line-blue {
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.legend-line-pink {
+  color: #f472b6 !important;
+  font-weight: 700 !important;
+}
+
+.snapshot-charts-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1.6fr 1.1fr !important;
+  gap: 12px !important;
+  align-items: flex-end !important;
+}
+
+/* Schedule Overview Column */
+.schedule-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 18px 20px !important;
+}
+
+.schedule-header {
+  font-size: 1.12rem !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  margin-bottom: 14px !important;
+}
+
+.mini-cal-weekdays {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  text-align: center !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  margin-bottom: 6px !important;
+}
+
+.mini-cal-days {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+  text-align: center !important;
+  font-size: 0.76rem !important;
+  color: #cbd5e1 !important;
+  margin-bottom: 20px !important;
+}
+
+.mini-cal-days span {
+  padding: 4px 0 !important;
+  border-radius: 6px !important;
+}
+
+.mini-cal-days .active-blue {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.mini-cal-days .active-cyan {
+  background: #0ea5e9 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.timeline-blocks-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.timeline-block-item {
+  display: grid !important;
+  grid-template-columns: 55px 1fr !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.block-time {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.76rem !important;
+  color: #94a3b8 !important;
+}
+
+.block-pill {
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.block-blue {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(14, 165, 233, 0.25) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  color: #e0f2fe !important;
+}
+
+.block-copper {
+  background: linear-gradient(135deg, rgba(124, 45, 18, 0.45) 0%, rgba(249, 115, 22, 0.25) 100%) !important;
+  border: 1px solid rgba(251, 146, 60, 0.35) !important;
+  color: #ffedd5 !important;
+}
+
+.block-sub {
+  font-size: 0.72rem !important;
+  opacity: 0.75 !important;
 }
 
 /* Bento Stat Cards */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin: 14px 0;
+.dash-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  gap: 12px !important;
+  margin: 14px 0 !important;
 }
 
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  box-shadow: var(--card-shadow);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
+.dash-card {
+  background: #131b2e !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
 }
 
-.card::before {
+.dash-card::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #6366f1, #06b6d4);
-  opacity: 0.85;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+.dash-card-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
 }
 
-.card-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+.dash-card-ico {
+  font-size: 1.1rem !important;
 }
 
-.card-ico {
-  font-size: 1.1rem;
+.dash-card-k {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #94a3b8 !important;
 }
 
-.card .k {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.72;
+.dash-card-v {
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 1.7rem !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  line-height: 1.1 !important;
 }
 
-.card .v {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+/* Dark Tables - High Contrast */
+.dash-table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin-top: 8px !important;
 }
 
-/* Glassmorphic Content Boxes */
-.box {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  padding: 16px 20px;
-  margin: 14px 0;
-  box-shadow: var(--card-shadow);
+.dash-table th {
+  background: #172238 !important;
+  color: #94a3b8 !important;
+  padding: 10px 14px !important;
+  font-size: 0.74rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  text-align: left !important;
 }
 
-.box-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #1e293b;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  padding-bottom: 8px;
+.dash-table td {
+  padding: 12px 14px !important;
+  font-size: 0.9rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  color: #f8fafc !important;
 }
 
-.box-title .ico {
-  font-size: 1.25rem;
+.dash-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02) !important;
 }
 
-.box-hero {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(6, 182, 212, 0.07));
-  border-color: rgba(99, 102, 241, 0.25);
+.td-topic {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
 }
 
-.coach-insight {
-  font-size: 0.98rem;
-  line-height: 1.6;
-  color: #334155;
-  margin: 0;
-  font-weight: 500;
+.subject-tag {
+  display: inline-block !important;
+  padding: 2px 10px !important;
+  border-radius: 6px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
 }
 
-.box-warn {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.05);
+.mastery-badge {
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
-/* Empty Card Placeholder */
-.empty-card {
-  text-align: center;
-  padding: 40px 20px;
-  background: rgba(248, 250, 252, 0.85);
-  border: 2px dashed rgba(203, 213, 225, 0.8);
-  border-radius: 16px;
-  margin: 16px 0;
-}
-
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 8px;
-}
-
-.empty-text {
-  color: #64748b;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-/* Portfolio Tables */
-.portfolio-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-top: 8px;
-}
-
-.portfolio-table th {
-  background: rgba(241, 245, 249, 0.7);
-  padding: 10px 12px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-  text-align: left;
-}
-
-.portfolio-table td {
-  padding: 10px 12px;
-  font-size: 0.88rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
-}
-
-.portfolio-table tr:hover td {
-  background: rgba(248, 250, 252, 0.8);
-}
-
-/* Badge Pills */
-.subject-pill {
-  display: inline-block;
-  font-size: 0.76rem;
-  font-weight: 700;
-  border-radius: 6px;
-  padding: 2px 8px;
-}
-
-.pct-pill {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #0f766e;
-}
-
-.priority-badge {
-  font-family: 'JetBrains Mono', monospace;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
+.priority-pill {
+  font-family: 'JetBrains Mono', monospace !important;
+  background: #172238 !important;
+  border: 1px solid #243048 !important;
+  color: #f8fafc !important;
+  border-radius: 6px !important;
+  padding: 3px 8px !important;
+  font-size: 0.8rem !important;
 }
 
 .score-pill {
-  display: inline-block;
-  background: rgba(6, 182, 212, 0.12);
-  color: #0891b2;
-  font-weight: 700;
-  border-radius: 6px;
-  padding: 2px 8px;
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
 }
 
 .mastery-shift {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #059669;
+  color: #10b981 !important;
+  font-weight: 600 !important;
+}
+
+/* Metacognitive Chips */
+.meta-subhead {
+  color: #94a3b8 !important;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+}
+
+.meta-chips-wrap {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.meta-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 1.5px solid !important;
+  border-radius: 999px !important;
+  padding: 4px 12px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+
+.dash-clean-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 6px 0 !important;
+}
+
+.dash-clean-list li {
+  padding: 6px 0 !important;
+  font-size: 0.9rem !important;
+  color: #e2e8f0 !important;
+}
+
+.fragile-none {
+  color: #10b981 !important;
+  font-weight: 600 !important;
+}
+
+.fragile-item {
+  color: #fb923c !important;
 }
 
 /* Skill Bars */
-.barrow {
-  display: grid;
-  grid-template-columns: minmax(180px, 260px) 1fr 50px;
-  gap: 12px;
-  align-items: center;
-  margin: 6px 0;
-  font-size: 0.88rem;
+.subject-matrix-group {
+  margin-bottom: 16px !important;
 }
 
-.bl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #334155;
+.matrix-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
 }
 
-.sub-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
+.matrix-bullet {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
 }
 
-.lbl-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bar-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(226, 232, 240, 0.7);
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.bp {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: 0.84rem;
-  color: #475569;
-}
-
-.subject-section-head h4 {
-  margin: 16px 0 6px !important;
-  font-size: 0.94rem !important;
+.matrix-title {
   font-weight: 700 !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 0.95rem !important;
 }
 
-.section-bullet {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
+.matrix-meta {
+  color: #94a3b8 !important;
+  font-size: 0.78rem !important;
+  margin-left: 6px !important;
 }
 
-.weight-badge {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 1px 8px;
-  border-radius: 999px;
+.skill-bar-row {
+  display: grid !important;
+  grid-template-columns: minmax(180px, 320px) 1fr 50px !important;
+  gap: 12px !important;
+  align-items: center !important;
+  margin: 6px 0 !important;
 }
 
-/* Timeline Calendar Grid */
-.tl {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
+.skill-bar-lbl {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
-.tl .hd {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-align: center;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 0;
+.skill-dot {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
 }
 
-.tl .day {
-  min-height: 72px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 6px 8px;
-  background: #ffffff;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
+.skill-title {
+  color: #e2e8f0 !important;
+  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
-.tl .day:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.skill-track {
+  height: 9px !important;
+  border-radius: 999px !important;
+  background: #1c273e !important;
+  overflow: hidden !important;
 }
 
-.tl .day.empty {
-  background: transparent;
-  border-color: transparent;
+.skill-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
 }
 
-.tl .today {
-  border: 2px solid #06b6d4 !important;
-  background: rgba(6, 182, 212, 0.03) !important;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.25) !important;
+.skill-pct {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  color: #94a3b8 !important;
 }
 
-.tl .past {
-  opacity: 0.55;
-  background: #f8fafc;
+.dash-note {
+  color: #64748b !important;
+  font-size: 0.82rem !important;
+  margin-top: 10px !important;
 }
 
-.tl .exam {
+/* Empty State */
+.dash-empty-card {
+  text-align: center !important;
+  padding: 40px 20px !important;
+  background: #121826 !important;
+  border: 1px dashed #243048 !important;
+  border-radius: 16px !important;
+  margin: 16px 0 !important;
+}
+
+.empty-icon-wrap {
+  font-size: 2.2rem !important;
+  margin-bottom: 8px !important;
+}
+
+.empty-title {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+}
+
+.empty-desc {
+  color: #94a3b8 !important;
+  font-size: 0.88rem !important;
+  margin-top: 4px !important;
+}
+
+/* Inputs & Form Controls */
+input[type="text"], input[type="password"], textarea {
+  background: #141c2e !important;
+  border: 1px solid #243048 !important;
+  border-radius: 8px !important;
+  color: #f8fafc !important;
+  font-size: 0.92rem !important;
+  padding: 8px 12px !important;
+}
+
+input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* Profile and Exam Input Icons */
+.profile-input-box, .exam-input-box {
+  position: relative !important;
+}
+.profile-input-box input, .exam-input-box input {
+  padding-right: 38px !important;
+}
+.profile-input-box::after {
+  content: "👤" !important;
+  position: absolute !important;
+  right: 12px !important;
+  bottom: 8px !important;
+  font-size: 1rem !important;
+  color: #64748b !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+.exam-input-box::after {
+  content: "📅" !important;
+  position: absolute !important;
+  right: 12px !important;
+  bottom: 8px !important;
+  font-size: 1rem !important;
+  color: #64748b !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+
+/* Custom Checkbox as Cyan Pill Toggle Switch from Image */
+input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 44px !important;
+  height: 24px !important;
+  border-radius: 999px !important;
+  background: #1e293b !important;
+  position: relative !important;
+  cursor: pointer !important;
+  outline: none !important;
+  border: 1px solid #334155 !important;
+  transition: all 0.25s ease !important;
+  flex-shrink: 0 !important;
+  margin-right: 8px !important;
+}
+
+input[type="checkbox"]:checked {
+  background: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45) !important;
+}
+
+input[type="checkbox"]::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 3px !important;
+  left: 3px !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+input[type="checkbox"]:checked::after {
+  transform: translateX(20px) !important;
+}
+
+/* Sliders */
+input[type="range"] {
+  accent-color: #38bdf8 !important;
+}
+
+/* Buttons */
+button.primary, button[variant="primary"] {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 18px !important;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+button.primary:hover, button[variant="primary"]:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5) !important;
+}
+
+button.secondary, button[variant="secondary"] {
+  background: #172238 !important;
+  border: 1px solid #2a3754 !important;
+  color: #f8fafc !important;
+  border-radius: 10px !important;
+  padding: 10px 18px !important;
+}
+
+/* Calendar Timeline */
+.cal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+.cal-hd {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+  letter-spacing: 0.06em !important;
+  padding: 4px 0 !important;
+}
+
+.cal-day {
+  min-height: 72px !important;
+  border: 1px solid #1c273e !important;
+  border-radius: 10px !important;
+  padding: 6px 8px !important;
+  background: #131b2e !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transition: border-color 0.2s ease !important;
+}
+
+.cal-day:hover {
+  border-color: #38bdf8 !important;
+}
+
+.cal-day.empty-slot {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.cal-day.is-today {
+  border: 2px solid #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.05) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3) !important;
+}
+
+.cal-day.is-past {
+  opacity: 0.5 !important;
+}
+
+.cal-day.is-exam {
   background: linear-gradient(135deg, #f59e0b, #ec4899) !important;
   color: #ffffff !important;
   border-color: transparent !important;
   box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
 }
 
-.day-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
+.cal-day-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 4px !important;
 }
 
-.tl .n {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #475569;
+.day-num {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
 }
 
-.tl .exam .n {
-  color: #ffffff;
+.cal-day.is-exam .day-num {
+  color: #ffffff !important;
 }
 
-.today-tag {
-  font-size: 0.62rem;
-  font-weight: 800;
-  background: #06b6d4;
-  color: #ffffff;
-  padding: 1px 4px;
-  border-radius: 4px;
+.today-label {
+  font-size: 0.6rem !important;
+  font-weight: 800 !important;
+  background: #38bdf8 !important;
+  color: #0b0f19 !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
 }
 
-.ex-badge {
-  font-size: 0.75rem;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-  padding: 2px 4px;
-  text-align: center;
-  margin-top: 4px;
+.exam-milestone-tag {
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+  text-align: center !important;
+  margin-top: 4px !important;
 }
 
-.dots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: auto;
+.dots-wrap {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 3px !important;
+  margin-top: auto !important;
 }
 
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  box-sizing: border-box;
-  transition: transform 0.15s ease;
+.session-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
 }
 
-.dot:hover {
-  transform: scale(1.4);
+.session-dot.missed {
+  opacity: 0.45 !important;
+  outline: 2px solid #ef4444 !important;
 }
 
-.dot.missed {
-  opacity: 0.45;
-  outline: 2px solid #ef4444;
+.session-dot.done {
+  opacity: 0.4 !important;
 }
 
-.dot.done {
-  opacity: 0.45;
+.rest-indicator {
+  font-size: 0.8rem !important;
 }
 
-.dot-rest {
-  font-size: 0.8rem;
+.cal-legend-bar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #131b2e !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin-bottom: 12px !important;
 }
 
-.legend-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  background: #f8fafc;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 12px;
+.legend-cluster {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 0.78rem;
-  background: #ffffff;
-  color: #334155;
-  font-weight: 500;
+.dash-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #172238 !important;
+  border: 1px solid #243048 !important;
+  color: #cbd5e1 !important;
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
+  font-size: 0.76rem !important;
+  font-weight: 500 !important;
 }
 
-.chip i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
+.dash-chip i {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
 }
 
-.chip-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.legend-chip {
-  background: #ffffff;
-}
-
-.danger-chip {
+.dash-chip.red-outline {
   border-color: #ef4444 !important;
-  color: #dc2626 !important;
-}
-
-.clean-list {
-  list-style: none;
-  padding: 0;
-  margin: 6px 0;
-}
-
-.clean-list li {
-  padding: 5px 0;
-  font-size: 0.88rem;
-  border-bottom: 1px dashed #f1f5f9;
+  color: #f87171 !important;
 }
 
 /* Agent Telemetry Terminal */
-.terminal-header {
-  background: #090d16;
-  color: #f8fafc;
-  padding: 12px 18px;
-  border-radius: 14px 14px 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: none;
+.terminal-wrap {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  background: #080c14 !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.45) !important;
 }
 
-.terminal-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #94a3b8;
+.terminal-top-bar {
+  background: #0d131f !important;
+  padding: 12px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 }
 
-.terminal-badges {
-  display: flex;
-  gap: 8px;
+.terminal-sys-title {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  color: #94a3b8 !important;
 }
 
-.terminal-badges .chip {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #f1f5f9;
-  font-size: 0.75rem;
+.terminal-badges-row {
+  display: flex !important;
+  gap: 8px !important;
 }
 
-.terminal-window {
-  background: #0b1120;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0 0 14px 14px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
-  padding: 8px;
+.term-pill {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  font-size: 0.74rem !important;
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
 }
 
-.scroll {
-  max-height: 600px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column-reverse;
-  padding: 6px 10px;
-}
-
-.tr {
-  display: grid;
-  grid-template-columns: 70px 130px 110px 1fr;
-  gap: 10px;
-  padding: 7px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: #cbd5e1;
-}
-
-.tr:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.tr .ts {
-  opacity: 0.5;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.76rem;
-}
-
-.tr .ag {
-  font-weight: 600;
-  color: #f1f5f9;
-}
-
-.kd-badge {
+.pulse-dot-green {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   display: inline-block;
-  text-align: center;
-  padding: 1px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  font-family: 'JetBrains Mono', monospace;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
 }
 
-.kd-THOUGHT { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
-.kd-ACTION { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
-.kd-OBSERVATION { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4); }
-.kd-DECISION { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
-.kd-MESSAGE { background: rgba(244, 114, 182, 0.2); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.4); }
-.kd-STATE { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
-
-.tr .tx {
-  word-break: break-word;
+.terminal-screen {
+  padding: 8px !important;
 }
 
-@media(max-width: 768px) {
-  .tr { grid-template-columns: 1fr; gap: 4px; }
-  .barrow { grid-template-columns: 1fr; }
-  .portfolio-hero-content { flex-direction: column; text-align: center; }
-  .portfolio-title { font-size: 1.6rem !important; }
+.terminal-scroller {
+  max-height: 560px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column-reverse !important;
+  padding: 6px !important;
+}
+
+.tr-row {
+  display: grid !important;
+  grid-template-columns: 70px 130px 110px 1fr !important;
+  gap: 10px !important;
+  padding: 7px 8px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.45 !important;
+  color: #cbd5e1 !important;
+}
+
+.tr-row:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.tr-ts {
+  opacity: 0.45 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.74rem !important;
+}
+
+.tr-ag {
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+}
+
+.tr-kd {
+  display: inline-block !important;
+  text-align: center !important;
+  padding: 1px 8px !important;
+  border-radius: 5px !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.kd-THOUGHT { background: rgba(168, 85, 247, 0.2) !important; color: #c084fc !important; border: 1px solid rgba(168, 85, 247, 0.4) !important; }
+.kd-ACTION { background: rgba(56, 189, 248, 0.2) !important; color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important; }
+.kd-OBSERVATION { background: rgba(52, 211, 153, 0.2) !important; color: #34d399 !important; border: 1px solid rgba(52, 211, 153, 0.4) !important; }
+.kd-DECISION { background: rgba(251, 191, 36, 0.2) !important; color: #fbbf24 !important; border: 1px solid rgba(251, 191, 36, 0.4) !important; }
+.kd-MESSAGE { background: rgba(244, 114, 182, 0.2) !important; color: #f472b6 !important; border: 1px solid rgba(244, 114, 182, 0.4) !important; }
+.kd-STATE { background: rgba(148, 163, 184, 0.2) !important; color: #94a3b8 !important; border: 1px solid rgba(148, 163, 184, 0.4) !important; }
+
+.tr-tx {
+  word-break: break-word !important;
+}
+
+@media(max-width: 992px) {
+  .snapshot-charts-row { grid-template-columns: 1fr !important; }
 }
 """
 
-THEME = gr.themes.Soft(  # type: ignore
-    primary_hue="indigo",  # type: ignore
-    secondary_hue="cyan",  # type: ignore
+THEME = gr.themes.Base(  # type: ignore
+    primary_hue="cyan",  # type: ignore
+    secondary_hue="amber",  # type: ignore
     neutral_hue="slate",  # type: ignore
     font=[gr.themes.GoogleFont("Plus Jakarta Sans"), gr.themes.GoogleFont("Outfit"), "system-ui", "sans-serif"],  # type: ignore
+).set(
+    body_background_fill="#0b0f19",
+    body_background_fill_dark="#0b0f19",
+    body_text_color="#f8fafc",
+    body_text_color_dark="#f8fafc",
+    block_background_fill="#121826",
+    block_background_fill_dark="#121826",
+    block_border_color="rgba(255, 255, 255, 0.08)",
+    block_border_color_dark="rgba(255, 255, 255, 0.08)",
+    block_border_width="1px",
+    block_radius="16px",
+    input_background_fill="#141c2e",
+    input_background_fill_dark="#141c2e",
+    input_border_color="#243048",
+    input_border_color_dark="#243048",
+    input_border_width="1px",
+    input_radius="8px",
 )
 
-DEMO_DEFAULTS = {  # subject: (include, confidence, quiz score, exam weight)
-    "Mathematics": (True, 4, 52, 5), "Physics": (True, 2, 45, 4), "Chemistry": (True, 3, 68, 3),
-    "Biology": (False, 3, 60, 3), "Computer Science": (True, 4, 82, 3), "History": (False, 3, 70, 2)}
+# Default configuration for B.Tech 2nd Year Term 1 subjects (optional toggle, confidence, quiz score, exam weight)
+DEMO_DEFAULTS = {
+    "Probability and Statistics": (True, 4, 65, 5),
+    "DSA C++": (True, 5, 78, 5),
+    "Fundamentals of Artificial Intelligence": (True, 3, 52, 4),
+    "Advanced DBMS": (True, 4, 70, 4),
+}
 
 
 def _need_plan(o: Optional[Orchestrator]) -> bool:
@@ -2166,10 +2641,10 @@ def _need_plan(o: Optional[Orchestrator]) -> bool:
 def build_plan(orch, api_key, name, exam_str, target, hours, start_hour, *rows):
     try:
         LLM.refresh(api_key)
-        exam = date.fromisoformat(str(exam_str).strip())
+        exam = parse_exam_date(str(exam_str).strip())
         days = (exam - date.today()).days
         if days < 2 or days > MAX_HORIZON_DAYS:
-            raise ValueError(f"Exam date must be between 2 and {MAX_HORIZON_DAYS} days from today (you entered {days}).")
+            raise ValueError(f"Exam date must be between 2 and {MAX_HORIZON_DAYS} days from today (you entered {days} days from today).")
         subs: List[SubjectInput] = []
         for i, sname in enumerate(DEMO_DEFAULTS.keys()):
             inc, conf, score, wt = rows[i * 4: (i + 1) * 4]
@@ -2177,12 +2652,12 @@ def build_plan(orch, api_key, name, exam_str, target, hours, start_hour, *rows):
                 subs.append(SubjectInput(name=sname, confidence=int(conf), quiz_score=float(score), exam_weight=int(wt)))
         if not subs:
             raise ValueError("Select at least one subject to study.")
-        prof = StudentProfile(name=(name or "Student").strip(), exam_date=exam, target_score=int(target),
+        prof = StudentProfile(name=(name or "Alex").strip(), exam_date=exam, target_score=int(target),
                                hours_per_day=float(hours), start_hour=int(start_hour), subjects=subs)
         o = Orchestrator()
         o.onboard(prof)
         mode = f"OpenAI {LLM.MODEL}" if LLM.live else "offline rule engine"
-        msg = f"**Plan v1 is ready** for {len(o.state.topics)} topics over {days} days (engine: {mode}). Open the **Schedule & Roadmap** tab."
+        msg = f"**Plan v1 is ready** for {len(o.state.topics)} topics across {len(subs)} subjects over {days} days (engine: {mode}). Open the **Schedule & Roadmap** tab."
         return (o, msg, render_diag(o.state), *view(o))
     except Exception as exc:
         return (orch, f"**Could not build the plan.** {exc}", gr.update(), *[gr.update()] * 5)
@@ -2231,95 +2706,253 @@ def refresh_trace(orch):
     return render_trace(orch)
 
 
-with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Cognitive Mastery OS") as demo:
+with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     orch_state = gr.State(None)
 
+    # Hero Banner exactly matching Image with Title, 3 Crests & 4 Badges (Zero Watermarks)
     gr.HTML("""
-    <div class='portfolio-hero'>
-      <div class='portfolio-badge-row'>
-        <span class='portfolio-chip'><span class='pulse-dot green'></span> 3 Autonomous ReAct Agents</span>
-        <span class='portfolio-chip'>🧠 Bayesian Knowledge Tracing</span>
-        <span class='portfolio-chip'>⚡ Spaced Repetition (SM-2)</span>
-        <span class='portfolio-chip'>🎯 Dynamic Roadmap Optimization</span>
+    <div class='hero-image2'>
+      <div class='hero-title-group'>
+        <h1>Personalized Academic Mastery</h1>
+        <p>A Sophisticated AI Study &amp; Performance Agent</p>
       </div>
-      <div class='portfolio-hero-content'>
-        <div class='portfolio-avatar'>
-          <div class='avatar-ring'>
-            <span class='avatar-icon'>⚡</span>
-          </div>
-        </div>
-        <div class='portfolio-title-group'>
-          <div class='portfolio-eyebrow'>ACADEMIC PORTFOLIO &amp; MASTERY SYSTEM</div>
-          <h1 class='portfolio-title'>AI Study Planner &amp; Performance Agent</h1>
-          <p class='portfolio-subtitle'>An agentic pair-programming orchestrator coordinating Diagnostic, Scheduler, and Evaluator agents to analyze knowledge gaps, synthesize spaced-repetition schedules, and rebalance daily plans.</p>
-        </div>
+      <div class='hero-crests-row'>
+        <!-- Left Blue Rosette -->
+        <svg width="44" height="54" viewBox="0 0 50 64" fill="none">
+          <circle cx="25" cy="22" r="16" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="2"/>
+          <path d="M18 22L23 27L32 17" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 36L14 54L25 47L36 54L31 36" fill="rgba(56,189,248,0.25)" stroke="#38bdf8" stroke-width="1.5"/>
+        </svg>
+
+        <!-- Center Master Emblem: Laurel + Lightning + Books -->
+        <svg width="74" height="74" viewBox="0 0 100 100" fill="none">
+          <!-- Left laurel (cyan) -->
+          <path d="M28 72C22 62 20 48 24 35C25 32 28 34 27 37C24 48 26 58 31 66C32 68 30 71 28 72Z" fill="#38bdf8"/>
+          <path d="M23 42C17 40 14 34 16 28C18 34 23 37 25 38C26 39 25 41 23 42Z" fill="#38bdf8"/>
+          <path d="M20 54C14 53 12 47 14 41C16 47 21 49 23 50C23 52 22 53 20 54Z" fill="#38bdf8"/>
+          <path d="M21 66C16 65 14 60 16 54C18 59 23 61 24 62C24 64 23 65 21 66Z" fill="#38bdf8"/>
+          <path d="M27 30C23 27 22 21 26 16C26 22 30 25 32 26C31 28 29 29 27 30Z" fill="#38bdf8"/>
+          <path d="M35 22C32 18 33 12 38 8C37 14 40 18 41 20C40 21 37 22 35 22Z" fill="#38bdf8"/>
+
+          <!-- Right laurel (copper) -->
+          <path d="M72 72C78 62 80 48 76 35C75 32 72 34 73 37C76 48 74 58 69 66C68 68 70 71 72 72Z" fill="#fb923c"/>
+          <path d="M77 42C83 40 86 34 84 28C82 34 77 37 75 38C74 39 75 41 77 42Z" fill="#fb923c"/>
+          <path d="M80 54C86 53 88 47 86 41C84 47 79 49 77 50C77 52 78 53 80 54Z" fill="#fb923c"/>
+          <path d="M79 66C84 65 86 60 84 54C82 59 77 61 76 62C76 64 77 65 79 66Z" fill="#fb923c"/>
+          <path d="M73 30C77 27 78 21 74 16C74 22 70 25 68 26C69 28 71 29 73 30Z" fill="#fb923c"/>
+          <path d="M65 22C68 18 67 12 62 8C63 14 60 18 59 20C60 21 63 22 65 22Z" fill="#fb923c"/>
+
+          <!-- Central Lightning Bolt -->
+          <path d="M52 14L37 42H50L45 62L65 34H51L56 14H52Z" fill="#e0f2fe" filter="drop-shadow(0 0 6px rgba(56,189,248,0.5))"/>
+
+          <!-- Stacked Books Beneath -->
+          <path d="M38 68L49 64L62 68L51 72L38 68Z" fill="#e0f2fe"/>
+          <path d="M36 74L49 70L64 74L51 78L36 74Z" fill="#38bdf8"/>
+          <path d="M34 80L49 76L66 80L51 84L34 80Z" fill="#fb923c"/>
+        </svg>
+
+        <!-- Right Pink Rosette -->
+        <svg width="44" height="54" viewBox="0 0 50 64" fill="none">
+          <circle cx="25" cy="22" r="16" fill="rgba(244,114,182,0.15)" stroke="#f472b6" stroke-width="2"/>
+          <path d="M18 22L23 27L32 17" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 36L14 54L25 47L36 54L31 36" fill="rgba(244,114,182,0.25)" stroke="#f472b6" stroke-width="1.5"/>
+        </svg>
       </div>
-      <div class='portfolio-stats-ribbon'>
-        <div class='ribbon-stat'>
-          <span class='stat-icon'>🤖</span>
-          <div>
-            <span class='stat-label'>Agent Architecture</span>
-            <span class='stat-val'>3 Cooperating Agents</span>
-          </div>
-        </div>
-        <div class='ribbon-stat'>
-          <span class='stat-icon'>📚</span>
-          <div>
-            <span class='stat-label'>Curriculum Scale</span>
-            <span class='stat-val'>6 Domains · 24 Topics</span>
-          </div>
-        </div>
-        <div class='ribbon-stat'>
-          <span class='stat-icon'>📈</span>
-          <div>
-            <span class='stat-label'>Pacing Engine</span>
-            <span class='stat-val'>Ebbinghaus Ladder</span>
-          </div>
-        </div>
-        <div class='ribbon-stat'>
-          <span class='stat-icon'>🛡️</span>
-          <div>
-            <span class='stat-label'>Execution Mode</span>
-            <span class='stat-val'>Hybrid OpenAI / Rule Fallback</span>
-          </div>
-        </div>
+      <div class='hero-chips-row'>
+        <span class='hero-pill-badge'>👥 3 Cooperating Agents</span>
+        <span class='hero-pill-badge'><span class='dot-pink'></span> Bayesian Knowledge Tracing</span>
+        <span class='hero-pill-badge'><span class='icon-copper'>⚡</span> Spaced Repetition SM-2</span>
+        <span class='hero-pill-badge'><span class='dot-purple'></span> Dynamic Roadmap Optimization</span>
       </div>
     </div>
     """)
 
     with gr.Tabs():
-        with gr.Tab("📋 Portfolio Setup & Diagnostics"):
+        with gr.Tab("⚙️ Setup & Diagnostics"):
+            # EXACT 3-COLUMN DASHBOARD LAYOUT FROM REFERENCE IMAGE
             with gr.Row():
-                with gr.Column(scale=2):
-                    api_key = gr.Textbox(label="OpenAI API Key (Optional)", type="password", placeholder="Paste sk-... or leave empty to use offline rule engine")
-                    s_name = gr.Textbox(label="Student Name", value="Alex")
-                    s_exam = gr.Textbox(label="Target Exam Date (YYYY-MM-DD)", value=(date.today() + timedelta(days=30)).isoformat())
-                    s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
-                    s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
-                    s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
+                # COLUMN 1: Portfolio & Plan Diagnostics (Left ~27%)
                 with gr.Column(scale=3):
-                    gr.Markdown("### 🎓 Subject Portfolio & Baseline Knowledge\nSelect your target subjects, self-rated confidence (1-5), and initial diagnostic score.")
-                    subject_inputs: List[Any] = []
-                    for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
-                        with gr.Group():
-                            with gr.Row():
-                                c_inc = gr.Checkbox(value=inc, label=sname, scale=2)
-                                c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=2)
-                                c_score = gr.Slider(0, 100, value=score, step=1, label="Quiz Score (%)", scale=2)
-                                c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
-                        subject_inputs += [c_inc, c_conf, c_score, c_wt]
-            build_btn = gr.Button("🚀 Diagnose Skills & Synthesize Study Plan", variant="primary", size="lg")
-            build_status = gr.Markdown()
+                    with gr.Group():
+                        gr.HTML("""
+                        <div class='card-header-bar'>
+                            <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
+                            <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                                <path d='M0 20C20 20 35 10 55 14C75 18 85 4 100 2' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round'/>
+                            </svg>
+                        </div>
+                        """)
+                        api_key = gr.Textbox(label="Config Key (Optional)", type="password", placeholder="Config Key")
+                        s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
+                        s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
+                        s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
+                        s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
+                        s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
+                        build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg")
+                        build_status = gr.Markdown()
+
+                # COLUMN 2: Subject Portfolio + Performance Snapshot (Center ~45%)
+                with gr.Column(scale=5):
+                    # Top Card: Subject Portfolio ⓘ (B.Tech 2nd Year Term 1 Subjects)
+                    with gr.Group():
+                        gr.HTML("""
+                        <div class='card-header-bar'>
+                            <div class='card-header-title'>Subject Portfolio <span class='info-icon' title='Select subjects optionally, set baseline confidence and initial quiz score'>ⓘ</span></div>
+                            <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                                <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
+                                <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
+                            </svg>
+                        </div>
+                        """)
+                        subject_inputs: List[Any] = []
+                        for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
+                            with gr.Group():
+                                with gr.Row():
+                                    c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=2)
+                                    c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=2)
+                                    c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=2)
+                                    c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
+                            subject_inputs += [c_inc, c_conf, c_score, c_wt]
+
+                    # Bottom Card: Performance Snapshot with Multi-Charts from Image
+                    gr.HTML("""
+                    <div class='snapshot-card'>
+                      <div class='snapshot-header'>
+                        <div class='snapshot-title'>Performance Snapshot</div>
+                        <div class='snapshot-legend'>
+                          <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
+                          <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
+                        </div>
+                      </div>
+                      <div class='snapshot-charts-row'>
+                        <!-- Left: Smooth Blue Area Curve -->
+                        <div>
+                          <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
+                            <defs>
+                              <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+                                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
+                              </linearGradient>
+                            </defs>
+                            <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
+                            <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+                          </svg>
+                        </div>
+
+                        <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
+                        <div>
+                          <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
+                            <defs>
+                              <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
+                                <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
+                              </linearGradient>
+                            </defs>
+                            <!-- Horizontal gridlines -->
+                            <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
+                            <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
+                            <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                            <!-- Y-axis text -->
+                            <text x="5" y="18" fill="#64748b" font-size="8">40</text>
+                            <text x="5" y="48" fill="#64748b" font-size="8">20</text>
+                            <text x="5" y="78" fill="#64748b" font-size="8">0</text>
+                            <!-- Curves -->
+                            <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
+                            <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
+                            <!-- X-axis labels -->
+                            <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
+                            <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
+                            <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
+                            <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
+                            <text x="160" y="87" fill="#64748b" font-size="7">May</text>
+                          </svg>
+                        </div>
+
+                        <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
+                        <div>
+                          <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
+                            <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                            <!-- Bars -->
+                            <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
+                            <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
+                            <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
+                            <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
+                            <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
+                            <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
+                            <!-- Labels -->
+                            <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
+                            <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
+                            <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
+                            <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    """)
+
+                # COLUMN 3: Schedule Overview (Right ~28%)
+                with gr.Column(scale=3):
+                    gr.HTML("""
+                    <div class='schedule-card'>
+                      <div class='schedule-header'>Schedule Overview</div>
+                      <!-- Mini Month Calendar -->
+                      <div class='mini-cal-weekdays'>
+                        <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+                      </div>
+                      <div class='mini-cal-days'>
+                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span class='active-blue'>7</span>
+                        <span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span>
+                        <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
+                        <span>22</span><span>23</span><span class='active-cyan'>24</span><span>25</span><span>26</span><span>27</span><span>28</span>
+                        <span>29</span><span>30</span><span>31</span><span></span><span></span><span></span><span></span>
+                      </div>
+
+                      <!-- Timeline Blocks -->
+                      <div class='timeline-blocks-list'>
+                        <div class='timeline-block-item'>
+                          <span class='block-time'>10:00</span>
+                          <div class='block-pill block-blue'>
+                            <span>Study block 1</span>
+                            <span class='block-sub'>DSA C++ Practice</span>
+                          </div>
+                        </div>
+                        <div class='timeline-block-item'>
+                          <span class='block-time'>09:00</span>
+                          <div class='block-pill block-copper'>
+                            <span>Study block 2</span>
+                            <span class='block-sub'>Probability &amp; Stats</span>
+                          </div>
+                        </div>
+                        <div class='timeline-block-item'>
+                          <span class='block-time'>05:00</span>
+                          <div class='block-pill block-copper'>
+                            <span>Study block 3</span>
+                            <span class='block-sub'>AI Heuristic Search</span>
+                          </div>
+                        </div>
+                        <div class='timeline-block-item'>
+                          <span class='block-time'>03:00</span>
+                          <div class='block-pill block-blue'>
+                            <span>Study block 4</span>
+                            <span class='block-sub'>DBMS Normalization</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    """)
+
+            # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
             diag_html = gr.HTML(EMPTY)
 
-        with gr.Tab("🗓️ Schedule & Roadmap"):
+        with gr.Tab("📅 Schedule & Roadmap"):
             summary_html = gr.HTML(EMPTY)
-            with gr.Accordion("⚡ Life Happened? Dynamic Schedule Rebalancing", open=True):
+            with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
                 with gr.Row():
                     a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
                     a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
                     a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
-                a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. caught a fever, work deadline, or need more review")
+                a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. college lab exams, caught a fever, or need more review")
                 with gr.Row():
                     adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
                     done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
@@ -2328,7 +2961,7 @@ with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Cognitive Mastery
             horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
             table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the first tab._")
 
-        with gr.Tab("⚡ Quiz Arena & Evaluation"):
+        with gr.Tab("⚡ Quiz Arena"):
             with gr.Row():
                 with gr.Column(scale=3):
                     with gr.Row():
@@ -2341,8 +2974,8 @@ with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Cognitive Mastery
                 with gr.Column(scale=2):
                     analytics_html = gr.HTML(EMPTY)
 
-        with gr.Tab("🧠 Autonomous Agent Telemetry"):
-            gr.Markdown("### 🔍 Transparent Multi-Agent Cognitive Trace\nInspect every thought, action, tool invocation, observation, decision, and inter-agent message.")
+        with gr.Tab("🟣 Agent Telemetry"):
+            gr.Markdown("### 🔍 Transparent Multi-Agent Cognitive Trace\nInspect every thought, action, tool invocation, observation, decision, and inter-agent message in real time.")
             trace_html = gr.HTML(render_trace(None))
             trace_btn = gr.Button("🔄 Refresh Telemetry Audit Stream")
 
@@ -2356,6 +2989,7 @@ with gr.Blocks(theme=THEME, css=CSS, title="AI Study Planner & Cognitive Mastery
     submit_btn.click(submit_quiz, [orch_state, *ans_boxes], [orch_state, feedback_md, *VIEW])
     trace_btn.click(refresh_trace, [orch_state], [trace_html])
 
-import os
-port = int(os.environ.get("PORT", 7860))
-demo.queue().launch(server_name="0.0.0.0", server_port=port)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 7860))
+    demo.queue().launch(server_name="0.0.0.0", server_port=port)
