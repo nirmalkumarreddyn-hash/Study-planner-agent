@@ -326,6 +326,7 @@ class SubjectInput(BaseModel):
     confidence: int = Field(ge=1, le=5)
     quiz_score: float = Field(ge=0, le=100)
     exam_weight: int = Field(default=3, ge=1, le=5)
+    selected_modules: List[str] = Field(default_factory=list)
 
 
 class StudentProfile(BaseModel):
@@ -493,7 +494,7 @@ class LLMClient:
         self.refresh()
 
     def refresh(self, api_key: str = "") -> None:
-        key = (api_key or "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
+        key = (api_key or "").strip() or OPENAI_API_KEY.strip() or os.environ.get("OPENAI_API_KEY", "").strip()
         self._client, self.failures = None, 0
         if key:
             os.environ["OPENAI_API_KEY"] = key
@@ -606,16 +607,26 @@ class DiagnosticAgent(ReActAgent):
         if prof is None:
             return "No profile available."
         st.topics.clear()
+        all_chosen_topics = set()
+        for s in prof.subjects:
+            chosen = s.selected_modules if s.selected_modules else list(CURRICULUM[s.name].keys())
+            all_chosen_topics.update(chosen)
+
         for s in prof.subjects:
             base = 0.6 * s.quiz_score / 100 + 0.4 * (s.confidence - 1) / 4
-            for tname, (diff, pre) in CURRICULUM[s.name].items():
+            chosen = s.selected_modules if s.selected_modules else list(CURRICULUM[s.name].keys())
+            for tname in chosen:
+                if tname not in CURRICULUM[s.name]:
+                    continue
+                diff, pre = CURRICULUM[s.name][tname]
                 jitter = (int(hashlib.md5(tname.encode()).hexdigest()[:4], 16) / 65535 - 0.5) * 0.24
                 m = clamp(base + jitter - 0.15 * (diff - 0.5), 0.05, 0.95)
                 need = max(1, round(1 + 3 * diff * (1 - m)))
-                st.topics[tname] = TopicState(name=tname, subject=s.name, difficulty=diff, prereqs=list(pre),
+                active_pre = [p for p in pre if p in all_chosen_topics]
+                st.topics[tname] = TopicState(name=tname, subject=s.name, difficulty=diff, prereqs=active_pre,
                                               weight=s.exam_weight / 3, mastery=m, sessions_needed=need)
         mem["matrix"] = True
-        return f"Skill matrix built: {len(st.topics)} topics, {len(prof.subjects)} subjects, mean mastery {wmean(st.topics.values()):.0%}."
+        return f"Skill matrix built: {len(st.topics)} topics across {len(prof.subjects)} subjects, mean mastery {wmean(st.topics.values()):.0%}."
 
     def t_calibration(self, mem):
         st, prof = self.state, self.state.profile
@@ -640,11 +651,13 @@ class DiagnosticAgent(ReActAgent):
         st, fragile = self.state, []
         for t in st.topics.values():        # CURRICULUM order guarantees prerequisites come first
             if t.prereqs:
-                pm = sum(st.topics[p].mastery for p in t.prereqs) / len(t.prereqs)
-                t.mastery = clamp(0.75 * t.mastery + 0.25 * pm, 0.03, 0.95)
-                if pm < 0.4 and t.mastery > pm + 0.25:
-                    t.mastery = clamp(t.mastery - 0.08, 0.03, 0.95)
-                    fragile.append(f"{t.name} (built on weak {', '.join(t.prereqs)})")
+                valid_pre = [p for p in t.prereqs if p in st.topics]
+                if valid_pre:
+                    pm = sum(st.topics[p].mastery for p in valid_pre) / len(valid_pre)
+                    t.mastery = clamp(0.75 * t.mastery + 0.25 * pm, 0.03, 0.95)
+                    if pm < 0.4 and t.mastery > pm + 0.25:
+                        t.mastery = clamp(t.mastery - 0.08, 0.03, 0.95)
+                        fragile.append(f"{t.name} (built on weak {', '.join(valid_pre)})")
         known = 0
         for t in st.topics.values():
             t.sessions_needed = max(1, round(1 + 3 * t.difficulty * (1 - t.mastery)))
@@ -2638,18 +2651,161 @@ def _need_plan(o: Optional[Orchestrator]) -> bool:
     return o is None or o.state.plan is None
 
 
-def build_plan(orch, api_key, name, exam_str, target, hours, start_hour, *rows):
+import calendar
+
+def render_mini_calendar(exam_str: str = "Nov 01, 2026") -> str:
+    today = date.today()
+    parsed_exam = None
+    parse_error = False
     try:
-        LLM.refresh(api_key)
+        parsed_exam = parse_exam_date(str(exam_str).strip())
+        days_left = (parsed_exam - today).days
+    except Exception:
+        parse_error = True
+        days_left = 30
+
+    month_name = today.strftime("%B %Y")
+    cal = calendar.monthcalendar(today.year, today.month)
+
+    days_html = []
+    for week in cal:
+        for day in week:
+            if day == 0:
+                days_html.append("<span></span>")
+            else:
+                is_today = (day == today.day)
+                is_exam = (parsed_exam is not None and parsed_exam.year == today.year and parsed_exam.month == today.month and parsed_exam.day == day)
+                if is_today and is_exam:
+                    days_html.append(f"<span class='active-cyan' title='Today & Exam ({today.strftime('%b %d')})'>{day}</span>")
+                elif is_today:
+                    days_html.append(f"<span class='active-cyan' title='Today ({today.strftime('%b %d')})'>{day}</span>")
+                elif is_exam and parsed_exam is not None:
+                    days_html.append(f"<span class='active-blue' title='Target Exam ({parsed_exam.strftime('%b %d')})'>{day}</span>")
+                else:
+                    days_html.append(f"<span>{day}</span>")
+
+    # Countdown banner
+    if parse_error or parsed_exam is None:
+        countdown_html = f"""
+        <div class='live-countdown-banner'>
+          <div style='display:flex; flex-direction:column; gap:2px;'>
+            <span style='font-weight:600; color:#f87171;'>Target Exam Date</span>
+            <span style='font-size:0.72rem; color:#94a3b8;'>Enter format: Nov 01, 2026 or YYYY-MM-DD</span>
+          </div>
+          <span class='days-count' style='background:#ef4444;'>Invalid</span>
+        </div>
+        """
+        exam_badge = ""
+    elif days_left > 0:
+        assert parsed_exam is not None
+        countdown_html = f"""
+        <div class='live-countdown-banner'>
+          <div style='display:flex; flex-direction:column; gap:2px;'>
+            <span style='font-weight:600; color:#e2e8f0;'>Live Exam Countdown</span>
+            <span style='font-size:0.72rem; color:#94a3b8;'>Counting from Today: {today.strftime('%b %d, %Y')} &rarr; Exam: {parsed_exam.strftime('%b %d, %Y')}</span>
+          </div>
+          <span class='days-count'>{days_left} Days Left</span>
+        </div>
+        """
+        if parsed_exam.year != today.year or parsed_exam.month != today.month:
+            exam_badge = f"""
+            <div style='font-size:0.75rem; color:#94a3b8; margin-top:-12px; margin-bottom:14px; text-align:center;'>
+              Target Exam: <span style='color:#38bdf8; font-weight:700;'>{parsed_exam.strftime('%b %d, %Y')}</span> ({days_left} days away)
+            </div>
+            """
+        else:
+            exam_badge = ""
+    elif days_left == 0:
+        countdown_html = f"""
+        <div class='live-countdown-banner'>
+          <div style='display:flex; flex-direction:column; gap:2px;'>
+            <span style='font-weight:600; color:#38bdf8;'>Target Exam is TODAY!</span>
+            <span style='font-size:0.72rem; color:#94a3b8;'>Good luck on your examination!</span>
+          </div>
+          <span class='days-count' style='background:#10b981;'>Exam Day</span>
+        </div>
+        """
+        exam_badge = ""
+    else:
+        assert parsed_exam is not None
+        countdown_html = f"""
+        <div class='live-countdown-banner'>
+          <div style='display:flex; flex-direction:column; gap:2px;'>
+            <span style='font-weight:600; color:#f59e0b;'>Exam Date in Past</span>
+            <span style='font-size:0.72rem; color:#94a3b8;'>Was on {parsed_exam.strftime('%b %d, %Y')}</span>
+          </div>
+          <span class='days-count' style='background:#f59e0b;'>{abs(days_left)}d ago</span>
+        </div>
+        """
+        exam_badge = ""
+
+    return f"""
+    <div class='schedule-card'>
+      <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;'>
+        <div class='schedule-header' style='margin-bottom:0;'>Schedule Overview</div>
+        <div style='font-size:0.76rem; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.12); padding:3px 8px; border-radius:6px; border:1px solid rgba(56,189,248,0.25);'>{month_name}</div>
+      </div>
+
+      {countdown_html}
+
+      <!-- Mini Month Calendar -->
+      <div class='mini-cal-weekdays'>
+        <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+      </div>
+      <div class='mini-cal-days'>
+        {''.join(days_html)}
+      </div>
+      {exam_badge}
+
+      <!-- Timeline Blocks -->
+      <div class='timeline-blocks-list'>
+        <div class='timeline-block-item'>
+          <span class='block-time'>10:00</span>
+          <div class='block-pill block-blue'>
+            <span>Study block 1</span>
+            <span class='block-sub'>DSA C++ Practice</span>
+          </div>
+        </div>
+        <div class='timeline-block-item'>
+          <span class='block-time'>09:00</span>
+          <div class='block-pill block-copper'>
+            <span>Study block 2</span>
+            <span class='block-sub'>Probability &amp; Stats</span>
+          </div>
+        </div>
+        <div class='timeline-block-item'>
+          <span class='block-time'>05:00</span>
+          <div class='block-pill block-copper'>
+            <span>Study block 3</span>
+            <span class='block-sub'>AI Heuristic Search</span>
+          </div>
+        </div>
+        <div class='timeline-block-item'>
+          <span class='block-time'>03:00</span>
+          <div class='block-pill block-blue'>
+            <span>Study block 4</span>
+            <span class='block-sub'>DBMS Normalization</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+def build_plan(orch, name, exam_str, target, hours, start_hour, *rows):
+    try:
+        LLM.refresh()
         exam = parse_exam_date(str(exam_str).strip())
         days = (exam - date.today()).days
         if days < 2 or days > MAX_HORIZON_DAYS:
             raise ValueError(f"Exam date must be between 2 and {MAX_HORIZON_DAYS} days from today (you entered {days} days from today).")
         subs: List[SubjectInput] = []
         for i, sname in enumerate(DEMO_DEFAULTS.keys()):
-            inc, conf, score, wt = rows[i * 4: (i + 1) * 4]
+            inc, conf, score, wt, chosen_mods = rows[i * 5: (i + 1) * 5]
             if inc:
-                subs.append(SubjectInput(name=sname, confidence=int(conf), quiz_score=float(score), exam_weight=int(wt)))
+                selected = list(chosen_mods) if chosen_mods else []
+                if not selected:
+                    raise ValueError(f"No modules selected for '{sname}'. Please select at least one module or uncheck the subject.")
+                subs.append(SubjectInput(name=sname, confidence=int(conf), quiz_score=float(score), exam_weight=int(wt), selected_modules=selected))
         if not subs:
             raise ValueError("Select at least one subject to study.")
         prof = StudentProfile(name=(name or "Alex").strip(), exam_date=exam, target_score=int(target),
@@ -2782,7 +2938,6 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                             </svg>
                         </div>
                         """)
-                        api_key = gr.Textbox(label="Config Key (Optional)", type="password", placeholder="Config Key")
                         s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
                         s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
                         s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
@@ -2812,7 +2967,14 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                                     c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=2)
                                     c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=2)
                                     c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
-                            subject_inputs += [c_inc, c_conf, c_score, c_wt]
+                                with gr.Accordion(f"📂 Select Modules for {sname} ({len(CURRICULUM[sname])} Modules Available)", open=False, elem_classes=["module-accordion"]):
+                                    c_mods = gr.CheckboxGroup(
+                                        choices=list(CURRICULUM[sname].keys()),
+                                        value=list(CURRICULUM[sname].keys()),
+                                        label=f"Select which modules to study for {sname}:",
+                                        elem_classes=["module-checkboxes"]
+                                    )
+                            subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
 
                     # Bottom Card: Performance Snapshot with Multi-Charts from Image
                     gr.HTML("""
@@ -2891,56 +3053,9 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                     </div>
                     """)
 
-                # COLUMN 3: Schedule Overview (Right ~28%)
+                # COLUMN 3: Schedule Overview (Right ~28%) - Live Dynamic Calendar
                 with gr.Column(scale=3):
-                    gr.HTML("""
-                    <div class='schedule-card'>
-                      <div class='schedule-header'>Schedule Overview</div>
-                      <!-- Mini Month Calendar -->
-                      <div class='mini-cal-weekdays'>
-                        <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-                      </div>
-                      <div class='mini-cal-days'>
-                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span class='active-blue'>7</span>
-                        <span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span>
-                        <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
-                        <span>22</span><span>23</span><span class='active-cyan'>24</span><span>25</span><span>26</span><span>27</span><span>28</span>
-                        <span>29</span><span>30</span><span>31</span><span></span><span></span><span></span><span></span>
-                      </div>
-
-                      <!-- Timeline Blocks -->
-                      <div class='timeline-blocks-list'>
-                        <div class='timeline-block-item'>
-                          <span class='block-time'>10:00</span>
-                          <div class='block-pill block-blue'>
-                            <span>Study block 1</span>
-                            <span class='block-sub'>DSA C++ Practice</span>
-                          </div>
-                        </div>
-                        <div class='timeline-block-item'>
-                          <span class='block-time'>09:00</span>
-                          <div class='block-pill block-copper'>
-                            <span>Study block 2</span>
-                            <span class='block-sub'>Probability &amp; Stats</span>
-                          </div>
-                        </div>
-                        <div class='timeline-block-item'>
-                          <span class='block-time'>05:00</span>
-                          <div class='block-pill block-copper'>
-                            <span>Study block 3</span>
-                            <span class='block-sub'>AI Heuristic Search</span>
-                          </div>
-                        </div>
-                        <div class='timeline-block-item'>
-                          <span class='block-time'>03:00</span>
-                          <div class='block-pill block-blue'>
-                            <span>Study block 4</span>
-                            <span class='block-sub'>DBMS Normalization</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    """)
+                    schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
 
             # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
             diag_html = gr.HTML(EMPTY)
@@ -2980,8 +3095,9 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
             trace_btn = gr.Button("🔄 Refresh Telemetry Audit Stream")
 
     VIEW = [timeline_html, table_md, summary_html, analytics_html, trace_html]
-    build_btn.click(build_plan, [orch_state, api_key, s_name, s_exam, s_target, s_hours, s_start, *subject_inputs],
+    build_btn.click(build_plan, [orch_state, s_name, s_exam, s_target, s_hours, s_start, *subject_inputs],
                     [orch_state, build_status, diag_html, *VIEW])
+    s_exam.change(render_mini_calendar, [s_exam], [schedule_overview_html])
     adapt_btn.click(do_adapt, [orch_state, a_missed, a_fatigue, a_hours, a_note], [orch_state, adapt_msg, *VIEW])
     done_btn.click(do_complete, [orch_state], [orch_state, adapt_msg, *VIEW])
     horizon.change(set_horizon, [orch_state, horizon], [orch_state, table_md])
