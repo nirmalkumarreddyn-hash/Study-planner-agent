@@ -13,7 +13,7 @@
 # Cell 2: optional OpenAI key (leave empty to use the offline mock engine)
 import os
 
-OPENAI_API_KEY = ""   # e.g. "sk-..."  (or add a Colab Secret named OPENAI_API_KEY)
+OPENAI_API_KEY = "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"   # e.g. "sk-..."  (or add a Colab Secret named OPENAI_API_KEY)
 
 if OPENAI_API_KEY.strip():
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY.strip()
