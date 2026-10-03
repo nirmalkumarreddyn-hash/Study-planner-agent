@@ -91,214 +91,454 @@ CURRICULUM: Dict[str, Dict[str, Tuple[float, List[str]]]] = {
 }
 
 # Offline diagnostic question bank: topic -> (question, model answer, [(concept label, "kw1|kw2|...")])
-QUESTION_BANK: Dict[str, Tuple[str, str, List[Tuple[str, str]]]] = {
-    # --- Probability and Statistics ---
-    "Module I: Introduction to Statistics": (
-        "Distinguish between descriptive and inferential statistics, and define population versus sample.",
-        "Descriptive statistics summarizes and describes sample data (mean, median, variance). Inferential statistics draws conclusions and predictions about an entire population based on sample data. A population is the complete group of interest, whereas a sample is a representative subset.",
-        [("descriptive summarizes data", "descriptive|summarize|mean|median|variance"), ("inferential makes predictions about population", "inferential|predict|conclusion|inference|hypothesis"), ("population vs sample", "population|entire|sample|subset|representative")]
-    ),
-    "Module II: Introduction to Probability": (
-        "State the axioms of probability and explain what makes two events mutually exclusive.",
-        "Probability axioms: 1) Non-negativity P(E) >= 0. 2) Unit measure P(S) = 1 for sample space S. 3) Additivity for mutually exclusive events: P(A U B) = P(A) + P(B). Mutually exclusive events cannot occur simultaneously, meaning P(A and B) = 0.",
-        [("probability between 0 and 1 / non-negative", "non-negative|>= 0|between 0 and 1|p(s)=1"), ("mutually exclusive cannot co-occur", "cannot happen together|cannot occur|disjoint|simultaneously"), ("addition rule for disjoint events", "p(a)+p(b)|p(a u b)|intersection is zero|p(a and b)=0")]
-    ),
-    "Module III: Random Variables": (
-        "Define a random variable and contrast discrete vs continuous random variables.",
-        "A random variable is a mathematical function that maps outcomes of a random phenomenon to real numbers. Discrete random variables take distinct, countable values described by a PMF. Continuous random variables take any value within a continuous interval described by a PDF.",
-        [("mapping outcomes to real numbers", "function|real number|outcome|maps"), ("discrete has countable values / PMF", "discrete|countable|integers|pmf|probability mass"), ("continuous has interval values / PDF", "continuous|interval|uncountable|pdf|density")]
-    ),
-    "Module IV: Discrete Probability Distributions": (
-        "Compare Binomial and Poisson distributions, stating parameters and the condition where Poisson approximates Binomial.",
-        "Binomial models n independent Bernoulli trials with constant success probability p, parameters (n, p). Poisson models event counts over a fixed interval with parameter lambda. Poisson approximates Binomial when n is large, p is very small, and lambda = n*p is moderate.",
-        [("binomial parameters n and p", "binomial|trials|success|n and p|independent"), ("poisson rate parameter lambda", "poisson|rate|interval|lambda"), ("approximation condition large n small p", "large n|small p|lambda = np|np|rare")]
-    ),
-    "Module V: Continuous Probability Distributions": (
-        "Explain key properties of the Normal distribution and state the 68-95-99.7 empirical rule.",
-        "The Normal distribution is symmetric and bell-shaped centered at mean mu with variance sigma^2. The empirical rule states that ~68% of data falls within mu +- 1*sigma, ~95% within mu +- 2*sigma, and ~99.7% within mu +- 3*sigma.",
-        [("bell-shaped and symmetric about mean", "bell|symmetric|mean|gaussian|normal"), ("mean and variance parameters", "mu|sigma|standard deviation|variance"), ("68-95-99.7 empirical rule", "68|95|99.7|1 standard deviation|2 standard deviations")]
-    ),
-    "Module VI: Sampling & Estimation": (
-        "State the Central Limit Theorem and distinguish between a point estimate and a confidence interval.",
-        "Central Limit Theorem states that the distribution of sample means approaches normality as sample size n grows (n >= 30), regardless of population shape. A point estimate is a single numerical value, whereas a confidence interval provides an interval with a specified confidence level (e.g. 95%).",
-        [("Central Limit Theorem normality of sample mean", "central limit|clt|sample mean|normal distribution|n >= 30"), ("point estimate is a single value", "point estimate|single value|single number|sample mean"), ("confidence interval provides a range with confidence level", "confidence interval|interval|range|margin of error|confidence level|95%")]
-    ),
-    "Module VII: Testing of Hypothesis – I": (
-        "Define Null (H0) and Alternative (H1) hypotheses, and explain Type I vs Type II errors.",
-        "Null hypothesis (H0) assumes no significant effect or status quo; Alternative hypothesis (H1) posits an effect. Type I error (alpha) occurs when a true null hypothesis is incorrectly rejected (false positive). Type II error (beta) occurs when a false null hypothesis fails to be rejected (false negative).",
-        [("null vs alternative hypothesis", "null|h0|alternative|h1|no effect|difference"), ("Type I error is false positive / reject true H0", "type i|type 1|reject null when true|false positive|alpha"), ("Type II error is false negative / accept false H0", "type ii|type 2|fail to reject|false negative|beta")]
-    ),
-    "Module VIII: Testing of Hypothesis – II": (
-        "Compare Z-test, Student's t-test, and Chi-Square test with their application criteria.",
-        "Z-test applies to large samples (n >= 30) or when population variance is known. Student's t-test applies to small samples (n < 30) with unknown population variance. Chi-Square test evaluates categorical data for goodness-of-fit and test of independence.",
-        [("z-test for large sample or known variance", "z-test|z test|large sample|known variance|n >= 30"), ("t-test for small sample with unknown variance", "t-test|t test|small sample|unknown variance|degrees of freedom"), ("chi-square for categorical / independence / goodness of fit", "chi-square|chi square|categorical|independence|goodness of fit")]
-    ),
-    "Module IX: Correlation": (
-        "Define Pearson's correlation coefficient r, state its range, and explain why correlation does not imply causation.",
-        "Pearson's r measures the strength and direction of linear association between two variables, ranging from -1 to +1. Correlation does not imply causation because an observed association may be driven by lurking confounding variables or reverse causality.",
-        [("measures linear association", "linear|association|relationship|pearson"), ("range from -1 to +1", "-1 to 1|-1 to +1|range|negative|positive"), ("correlation vs causation", "causation|cause|confounding|lurking|does not imply")]
-    ),
-    "Module X: Regression": (
-        "Explain Simple Linear Regression and the Ordinary Least Squares (OLS) minimization principle.",
-        "Simple linear regression models y = beta0 + beta1*x + epsilon, where beta1 is the slope and beta0 is the intercept. Ordinary Least Squares (OLS) finds optimal parameters by minimizing the sum of squared vertical differences (residuals) between actual and predicted y values.",
-        [("linear regression formula slope and intercept", "y =|beta0|beta1|slope|intercept|dependent|independent"), ("Ordinary Least Squares minimizes sum of squared errors", "ordinary least squares|ols|minimize|sum of squared|residuals|errors"), ("residual is observed minus predicted", "residual|predicted|observed|fitted")]
-    ),
+QUESTION_BANK: Dict[str, Dict[str, Any]] = {
+    # --- Probability and Statistics (Maths) ---
+    "Module I: Introduction to Statistics": {
+        "question": "What is the primary difference between descriptive statistics and inferential statistics?",
+        "options": [
+            "A) Descriptive statistics summarizes sample data, while inferential statistics uses sample data to make predictions or test hypotheses about a larger population.",
+            "B) Descriptive statistics applies only to qualitative data, while inferential statistics applies strictly to numerical counts.",
+            "C) Descriptive statistics requires a Gaussian normal distribution, while inferential statistics is strictly non-parametric.",
+            "D) Descriptive statistics calculates probabilities, while inferential statistics only computes the sample arithmetic mean."
+        ],
+        "answer": "A",
+        "explanation": "Descriptive statistics organizes, displays, and summarizes data (mean, median, variance). Inferential statistics allows researchers to draw conclusions and test hypotheses about a population based on sample findings."
+    },
+    "Module II: Introduction to Probability": {
+        "question": "If two events A and B are mutually exclusive (disjoint), which of the following statements must hold true?",
+        "options": [
+            "A) P(A ∩ B) = P(A) * P(B)",
+            "B) P(A ∪ B) = P(A) + P(B) and P(A ∩ B) = 0",
+            "C) P(A | B) = P(A)",
+            "D) P(A ∪ B) = 1"
+        ],
+        "answer": "B",
+        "explanation": "Mutually exclusive events cannot occur simultaneously, meaning their joint probability P(A ∩ B) = 0. According to the third axiom of probability, P(A ∪ B) = P(A) + P(B)."
+    },
+    "Module III: Random Variables": {
+        "question": "Which of the following correctly distinguishes a discrete random variable from a continuous random variable?",
+        "options": [
+            "A) Discrete random variables have an uncountably infinite range governed by a Probability Density Function (PDF).",
+            "B) Discrete random variables take countable values governed by a PMF, while continuous random variables take values across an interval described by a PDF.",
+            "C) Continuous random variables have non-zero probability at every individual exact point: P(X = c) > 0.",
+            "D) Discrete random variables only take positive integers, whereas continuous random variables only take negative values."
+        ],
+        "answer": "B",
+        "explanation": "A discrete random variable takes countable values and is described by a Probability Mass Function (PMF). A continuous random variable takes values in a continuum, characterized by a Probability Density Function (PDF) where P(X = c) = 0 for any single point."
+    },
+    "Module IV: Discrete Probability Distributions": {
+        "question": "Under which condition does the Poisson distribution serve as a standard approximation to the Binomial distribution B(n, p)?",
+        "options": [
+            "A) When n is small and p is close to 1.",
+            "B) When n is large (n ≥ 20), p is very small (p ≤ 0.05), and λ = np is a moderate constant.",
+            "C) When n = p and the variance equals n².",
+            "D) When trials are dependent and sampling is done without replacement."
+        ],
+        "answer": "B",
+        "explanation": "The Poisson distribution approximates the Binomial distribution for rare events where the number of trials n is large and success probability p is small, keeping the expected value λ = np moderate."
+    },
+    "Module V: Continuous Probability Distributions": {
+        "question": "According to the empirical rule (68-95-99.7 rule) for a Normal distribution N(μ, σ²), what percentage of data falls within μ ± 2σ?",
+        "options": [
+            "A) Approximately 68.27%",
+            "B) Approximately 95.45%",
+            "C) Approximately 99.73%",
+            "D) Exactly 50.00%"
+        ],
+        "answer": "B",
+        "explanation": "In a Normal (Gaussian) distribution, ~68% of data falls within 1 standard deviation, ~95.45% falls within 2 standard deviations (μ ± 2σ), and ~99.73% falls within 3 standard deviations."
+    },
+    "Module VI: Sampling & Estimation": {
+        "question": "What does the Central Limit Theorem (CLT) state regarding the distribution of the sample mean?",
+        "options": [
+            "A) The population itself must be strictly normal for sample means to follow a normal distribution.",
+            "B) The sample mean approaches zero as the sample size increases.",
+            "C) For sufficiently large sample size (typically n ≥ 30), the sampling distribution of the sample mean approaches a normal distribution regardless of the population shape.",
+            "D) The standard error of the mean increases as the square of the sample size."
+        ],
+        "answer": "C",
+        "explanation": "The Central Limit Theorem guarantees that the distribution of the sample mean approaches a normal distribution as sample size n grows (n ≥ 30), regardless of the shape of the underlying population distribution."
+    },
+    "Module VII: Testing of Hypothesis – I": {
+        "question": "In statistical hypothesis testing, how is a Type I error defined?",
+        "options": [
+            "A) Failing to reject a false null hypothesis (False Negative, β).",
+            "B) Rejecting a true null hypothesis (False Positive, α).",
+            "C) Accepting the null hypothesis when the alternative hypothesis is true.",
+            "D) Incorrectly setting the confidence interval width to zero."
+        ],
+        "answer": "B",
+        "explanation": "A Type I error (significance level α) occurs when the researcher rejects the null hypothesis H0 when it is actually true in reality (false positive conclusion)."
+    },
+    "Module VIII: Testing of Hypothesis – II": {
+        "question": "When is Student's t-test preferred over the Z-test for hypothesis testing about a population mean?",
+        "options": [
+            "A) When the sample size is small (n < 30) and the population variance σ² is unknown.",
+            "B) When the population variance is known and the sample size is greater than 100.",
+            "C) When data is purely categorical and follows a multinomial distribution.",
+            "D) When comparing four or more population variances simultaneously."
+        ],
+        "answer": "A",
+        "explanation": "Student's t-test is used when the population standard deviation σ is unknown and sample size is small (n < 30), estimating variance using the sample standard deviation s with (n - 1) degrees of freedom."
+    },
+    "Module IX: Correlation": {
+        "question": "If Pearson's correlation coefficient between two variables X and Y is r = -0.88, what does this signify?",
+        "options": [
+            "A) A weak positive linear association.",
+            "B) A strong negative linear association where Y tends to decrease as X increases.",
+            "C) That changes in X directly cause Y to decrease.",
+            "D) Non-existent correlation because r is negative."
+        ],
+        "answer": "B",
+        "explanation": "Pearson's r ranges from -1 to +1. A value of -0.88 indicates a strong negative linear relationship. Note that correlation indicates association, not causal direction."
+    },
+    "Module X: Regression": {
+        "question": "In Simple Linear Regression y = β₀ + β₁x + ε, how does Ordinary Least Squares (OLS) find the regression coefficients?",
+        "options": [
+            "A) By maximizing the horizontal distance between data points and the line.",
+            "B) By minimizing the sum of squared differences (residuals) between observed y values and predicted y values.",
+            "C) By setting the slope β₁ equal to the correlation coefficient r regardless of standard deviations.",
+            "D) By forcing the intercept β₀ to pass through the origin (0, 0)."
+        ],
+        "answer": "B",
+        "explanation": "The Ordinary Least Squares (OLS) method estimates parameters by minimizing the Residual Sum of Squares: Σ(y_i - ŷ_i)², ensuring minimal vertical variance between points and the fitted line."
+    },
 
     # --- DSA C++ ---
-    "Module I: Introduction to C++ Programming": (
-        "Outline the four stages of C++ compilation and explain why namespaces like std are used.",
-        "C++ compilation stages: Preprocessing (macro expansion, #include), Compiling (parsing to assembly), Assembling (creating object code .o/.obj), and Linking (binding libraries into an executable). Namespaces prevent naming collisions by scoping identifiers.",
-        [("compilation stages preprocessing compiling linking", "preprocess|compile|assemble|link|stages"), ("role of namespace", "namespace|scope|std|collision|name conflict"), ("executable generation", "executable|object code|binary")]
-    ),
-    "Module II: Control Statements": (
-        "Compare switch-case and if-else ladders in C++, and explain the necessity of the break statement.",
-        "If-else evaluates general boolean conditions sequentially. Switch-case evaluates integral/enum values using jump tables for O(1) branch dispatch. Without break, execution falls through into subsequent case statements.",
-        [("if-else evaluates boolean expressions", "if-else|if else|boolean|condition|expression"), ("switch uses integral constant / jump table", "switch|case|integral|constant|jump table|constant expression"), ("break prevents fallthrough", "break|fallthrough|terminate|exit")]
-    ),
-    "Module III: Arrays – 1D": (
-        "How is a 1D array allocated in memory in C++, and why is pointer offset arithmetic 0-indexed?",
-        "A 1D array is allocated as a contiguous block of memory. 0-indexing directly reflects pointer arithmetic: address(arr[i]) = base_address + i * sizeof(type), where index 0 has zero offset from base.",
-        [("contiguous memory allocation", "contiguous|consecutive|sequential|memory"), ("0-indexed as memory offset", "offset|base address|distance|0-indexed|pointer arithmetic"), ("element address formula", "sizeof|base +|index times size")]
-    ),
-    "Module IV: Arrays – 2D": (
-        "Explain Row-Major order storage for 2D arrays in C++ and state the element address calculation formula.",
-        "C++ stores 2D arrays in Row-Major order, placing elements of row 0 consecutively, followed by row 1. Address of arr[i][j] = base + (i * total_cols + j) * sizeof(element).",
-        [("C++ uses Row-Major order", "row-major|row major|c++ uses|row by row"), ("Column-Major stores column by column", "column-major|column major|column by column"), ("2D address formula", "base +|i * cols + j|row index times columns")]
-    ),
-    "Module V: String Arrays": (
-        "Contrast C-style char arrays with C++ std::string regarding null-termination and memory safety.",
-        "C-style strings are null-terminated ('\\0') char arrays with fixed buffer size, susceptible to buffer overflows. std::string is an OOP container that manages memory dynamically, tracks length explicitly, and prevents buffer overruns.",
-        [("C strings are null-terminated char arrays", "null-terminated|\\0|char array|c-style"), ("std::string is dynamic and manages memory", "std::string|dynamic|size|heap|reallocate|class"), ("safety against buffer overflows", "buffer overflow|safe|bounds|length")]
-    ),
-    "Module VI: Structures": (
-        "Explain struct in C++ and why memory structure padding / data alignment occurs.",
-        "A struct groups heterogeneous data fields (public by default in C++). Compilers insert structure padding bytes between fields to align variables to natural memory word boundaries, maximizing CPU cache access speed.",
-        [("user-defined type grouping heterogeneous data", "group|different types|heterogeneous|user-defined|struct"), ("public by default in C++", "public|default access|class vs struct"), ("padding and memory alignment for CPU word size", "padding|alignment|word size|offset|unused bytes|boundary")]
-    ),
-    "Module VII: Data Structures performance Analysis": (
-        "Define Big-O, Big-Omega, and Big-Theta asymptotic notations, and compare time vs space complexity.",
-        "Big-O gives an asymptotic upper bound (worst-case limit). Big-Omega gives an asymptotic lower bound (best-case). Big-Theta gives a tight bound. Time complexity measures instruction count growth with input size n; space complexity measures auxiliary memory.",
-        [("Big-O is upper bound", "big-o|big o|upper bound|worst-case|asymptotic upper"), ("Big-Omega lower bound and Big-Theta tight bound", "omega|lower bound|theta|tight bound"), ("time vs space complexity", "time complexity|space complexity|input size|memory|scale")]
-    ),
-    "Module VIII: Stacks": (
-        "Explain the LIFO principle of a Stack, its core operations with time complexity, and an application.",
-        "Stack operates on Last-In First-Out (LIFO). Primary operations push(), pop(), and top() run in O(1) time. Key applications include expression parsing, parentheses matching, function call stacks, and backtracking.",
-        [("LIFO principle", "lifo|last in first out|last-in"), ("push pop peek in O(1)", "push|pop|peek|top|o(1)|constant time"), ("applications like recursion or parentheses matching", "parentheses|expression|call stack|backtracking|undo")]
-    ),
-    "Module IX: Queues": (
-        "Explain the FIFO principle of a Queue and how a Circular Queue resolves the false overflow issue.",
-        "Queue operates on First-In First-Out (FIFO) with enqueue at rear and dequeue at front in O(1). In linear queues, freed front slots cannot be reused; a Circular Queue connects rear back to front using modulo arithmetic ((rear + 1) % capacity).",
-        [("FIFO principle", "fifo|first in first out|first-in"), ("circular queue avoids false overflow / uses modulo", "circular queue|modulo|reusable|false overflow|wrap around|% size"), ("deque supports operations at both ends", "deque|double-ended|both ends|front and rear")]
-    ),
-    "Module X: STL Fundamentals & Containers": (
-        "Describe the three main pillars of C++ STL and compare std::vector with std::list.",
-        "STL pillars: Containers (store data), Iterators (pointer abstraction for traversal), and Algorithms (generic functions like sort, find). std::vector provides contiguous dynamic memory with O(1) random access; std::list is a doubly linked list with O(1) bidirectional node insertions.",
-        [("three components containers iterators algorithms", "containers|iterators|algorithms|stl|standard template library"), ("vector dynamic array with O(1) random access", "vector|dynamic array|random access|contiguous|o(1) access"), ("list doubly linked list with O(1) insertion", "list|linked list|doubly linked|node|insertion")]
-    ),
+    "Module I: Introduction to C++ Programming": {
+        "question": "What is the primary architectural purpose of namespaces (such as `namespace std`) in C++?",
+        "options": [
+            "A) To speed up execution by avoiding memory allocation on the heap.",
+            "B) To create distinct logical scopes and avoid identifier naming collisions between different modules and libraries.",
+            "C) To enforce dynamic duck-typing during program execution.",
+            "D) To automatically manage garbage collection for raw pointers."
+        ],
+        "answer": "B",
+        "explanation": "Namespaces prevent naming collisions by scoping identifiers (functions, classes, variables) into logical namespaces such as std, preventing name conflicts when combining multiple codebases."
+    },
+    "Module II: Control Statements": {
+        "question": "Which of the following is a key distinguishing characteristic of the `do-while` loop in C++ compared to the `while` loop?",
+        "options": [
+            "A) The condition is tested at the beginning before entering the loop body.",
+            "B) The body of a `do-while` loop is guaranteed to execute at least once, regardless of whether the condition is initially true or false.",
+            "C) A `do-while` loop cannot contain `break` or `continue` statements.",
+            "D) A `do-while` loop only executes if the condition is initialized to false."
+        ],
+        "answer": "B",
+        "explanation": "The `do-while` loop is an exit-controlled loop: its condition is evaluated at the bottom after the loop body executes, guaranteeing at least one execution."
+    },
+    "Module III: Arrays – 1D": {
+        "question": "What occurs in standard C++ if code attempts to read or write to an index beyond the bounds of a static array (e.g., `arr[10]` on an array of size 5)?",
+        "options": [
+            "A) The runtime throws an `ArrayIndexOutOfBoundsException`.",
+            "B) C++ does not perform automatic bounds checking on primitive arrays, resulting in undefined behavior or memory corruption.",
+            "C) The array automatically resizes dynamically to fit the new index.",
+            "D) The compiler replaces the out-of-bounds index with index 0."
+        ],
+        "answer": "B",
+        "explanation": "Primitive C++ arrays do not perform runtime bounds checking. Accessing invalid indices causes undefined behavior, potentially corrupting memory or triggering a segmentation fault."
+    },
+    "Module IV: Arrays – 2D": {
+        "question": "How does C++ store the elements of a 2D array `int matrix[3][4]` in computer memory?",
+        "options": [
+            "A) In column-major order (all elements of column 0, then column 1, etc.).",
+            "B) In row-major order (consecutive memory locations for row 0, followed by row 1, then row 2).",
+            "C) In disconnected pointer blocks scattered randomly in heap memory.",
+            "D) In diagonal zigzag order."
+        ],
+        "answer": "B",
+        "explanation": "C++ arranges multi-dimensional arrays in row-major order. Elements of the same row are adjacent in memory, and row i+1 begins immediately after row i."
+    },
+    "Module V: String Arrays": {
+        "question": "How does a C-style character string (`char str[]`) fundamentally differ from C++ `std::string`?",
+        "options": [
+            "A) C-style strings are null-terminated (`'\\0'`) character arrays requiring manual buffer management, whereas `std::string` manages dynamic memory automatically.",
+            "B) `std::string` cannot be indexed using array subscript notation `[]`.",
+            "C) C-style strings provide built-in dynamic resizing member functions.",
+            "D) `std::string` is allocated strictly on the CPU registers."
+        ],
+        "answer": "A",
+        "explanation": "C-style strings are raw character arrays terminated by a null byte ('\\0') with fixed buffers. `std::string` is an STL class that encapsulates dynamic allocation, bounds safety, and length tracking."
+    },
+    "Module VI: Structures": {
+        "question": "What is the only syntactic difference between a `struct` and a `class` in C++?",
+        "options": [
+            "A) `struct` members and base classes are public by default, whereas `class` members and base classes are private by default.",
+            "B) `struct` cannot contain member functions, constructors, or destructors.",
+            "C) `struct` is always allocated on the stack while `class` is always on the heap.",
+            "D) `struct` does not support operator overloading."
+        ],
+        "answer": "A",
+        "explanation": "In C++, `struct` and `class` are almost identical, with one key distinction: members and inheritance default to `public` in a `struct`, and to `private` in a `class`."
+    },
+    "Module VII: Data Structures performance Analysis": {
+        "question": "What does an asymptotic time complexity of O(n log n) indicate in algorithmic performance analysis?",
+        "options": [
+            "A) The exact number of milliseconds an algorithm runs on a modern multicore CPU.",
+            "B) The upper bound on growth rate as input size n increases, typical of optimal comparison-based sorting algorithms like Merge Sort.",
+            "C) Linear search time through an unsorted array.",
+            "D) Constant space complexity required by recursive call stacks."
+        ],
+        "answer": "B",
+        "explanation": "Big-O notation describes the upper bound on the asymptotic growth rate of an algorithm. O(n log n) is the theoretical lower bound for comparison sorting, achieved by Merge Sort and Heapsort."
+    },
+    "Module VIII: Stacks": {
+        "question": "Which operational principle governs a Stack data structure, and what is the time complexity of `push()` and `pop()`?",
+        "options": [
+            "A) FIFO (First In First Out) with O(n) average complexity.",
+            "B) LIFO (Last In First Out) with O(1) constant time complexity for both push and pop.",
+            "C) LILO (Last In Last Out) with O(log n) tree balancing.",
+            "D) Random access with O(1) arbitrary indexing."
+        ],
+        "answer": "B",
+        "explanation": "A stack operates on the Last-In, First-Out (LIFO) principle. Elements are added and removed strictly from the top, providing O(1) constant time push and pop operations."
+    },
+    "Module IX: Queues": {
+        "question": "How does a Circular Queue solve the 'false overflow' limitation found in a simple linear array queue?",
+        "options": [
+            "A) By converting array elements into a doubly-linked tree structure.",
+            "B) By wrapping rear and front pointers around to index 0 using modulo arithmetic `(index + 1) % capacity`.",
+            "C) By shifting all remaining elements left every time an element is dequeued.",
+            "D) By using an auxiliary stack to reverse element positions."
+        ],
+        "answer": "B",
+        "explanation": "In a linear array queue, dequeuing leaves unused space at the front that cannot be reused. A circular queue wraps indices around using modulo arithmetic, reusing vacant front slots."
+    },
+    "Module X: STL Fundamentals & Containers": {
+        "question": "When should an engineer select `std::vector` over `std::list` in C++?",
+        "options": [
+            "A) When frequent insertions and deletions at random arbitrary middle locations are primary.",
+            "B) When contiguous memory layout, CPU cache locality, and O(1) random indexing access via `[]` are required.",
+            "C) When node pointer overhead must be prioritized for memory consumption.",
+            "D) When elements must be stored in a balanced red-black binary search tree."
+        ],
+        "answer": "B",
+        "explanation": "`std::vector` stores elements in contiguous memory, enabling O(1) random access and excellent CPU cache utilization. `std::list` is a doubly linked list with pointer overhead and non-contiguous memory."
+    },
 
-    # --- Fundamentals of Artificial Intelligence ---
-    "Module - I: Introduction to Artificial Intelligence": (
-        "Define an intelligent agent in AI and explain the Turing Test criterion.",
-        "An intelligent agent perceives its environment via sensors and acts rationally via actuators to maximize expected performance. The Turing Test posits that a computer is intelligent if an interrogator cannot distinguish its conversational replies from a human's.",
-        [("acting rationally / rational agent", "rational|agent|percept|action|goal|environment"), ("Turing test conversational indistinguishability", "turing test|imitation game|human|interrogator|indistinguishable"), ("thinking vs acting humanly vs rationally", "humanly|rationally|thinking|acting")]
-    ),
-    "Module - II: Uninformed Search Strategies": (
-        "Compare Breadth-First Search (BFS) and Depth-First Search (DFS) on completeness, optimality, and memory.",
-        "BFS expands shallowest nodes first using a FIFO queue; it is complete and optimal (for unit step costs), but requires O(b^d) exponential memory. DFS expands deepest nodes using a LIFO stack; it is not complete or optimal, but uses modest O(b*m) linear memory.",
-        [("BFS complete and optimal with O(b^d) space", "bfs|breadth-first|queue|complete|optimal|exponential space|o(b^d)"), ("DFS linear space O(bm) but not optimal", "dfs|depth-first|stack|linear space|o(bm)|not optimal"), ("branching factor b and depth d", "branching factor|depth|space complexity")]
-    ),
-    "Module - III: Informed Search Strategies": (
-        "Explain A* search evaluation function f(n) = g(n) + h(n) and the admissibility property of heuristics.",
-        "A* evaluates nodes by f(n) = g(n) + h(n), where g(n) is actual cost from root to n, and h(n) is estimated heuristic cost to goal. An admissible heuristic never overestimates the actual cost (h(n) <= h*(n)), guaranteeing A* search optimality.",
-        [("f(n) = g(n) + h(n) formula", "f(n)|g(n)|h(n)|actual cost|heuristic estimate"), ("admissible heuristic never overestimates", "admissible|never overestimates|underestimate|h(n) <= h*(n)|optimistic"), ("optimality of A*", "optimal|shortest path|priority queue")]
-    ),
-    "Module - IV: Optimal Decisions in Games": (
-        "Explain the Minimax decision rule for two-player zero-sum games and how Alpha-Beta pruning improves speed.",
-        "Minimax maximizes utility for MAX while anticipating MIN will choose moves minimizing MAX's payoff. Alpha-Beta pruning prunes branches that cannot influence the final decision when alpha >= beta, allowing search to twice the depth in the same time.",
-        [("Minimax for zero-sum two-player games", "minimax|zero-sum|max|min|payoff|utility"), ("Alpha-Beta pruning cuts redundant branches", "alpha-beta|pruning|prune|cutoff|alpha >= beta|efficiency"), ("doubling search depth", "depth|branching factor|evaluation")]
-    ),
-    "Module - V: Inferences": (
-        "State Modus Ponens and explain the Resolution refutation rule in propositional logic.",
-        "Modus Ponens: from P and (P -> Q), infer Q. Resolution rule takes two clauses containing complementary literals (A v B) and (~A v C) and produces resolvent (B v C); proof by contradiction repeatedly applies resolution until an empty clause is derived.",
-        [("Modus Ponens if P and P implies Q then Q", "modus ponens|p implies q|implication|infer q"), ("Resolution resolves complementary literals", "resolution|complementary literals|clause|resolvent|refutation"), ("proof by refutation / contradiction", "refutation|contradiction|empty clause")]
-    ),
-    "Module - VI: Knowledge Representation & Reasoning": (
-        "Contrast Propositional Logic with First-Order Logic (FOL) regarding predicates and quantifiers.",
-        "Propositional logic represents facts as atomic boolean propositions without internal structure. First-Order Logic (FOL) models the world using objects, relations (predicates), functions, and quantifiers (Universal forall, Existential exists), enabling expressiveness.",
-        [("propositional logic lacks objects and relations", "propositional|facts|true or false|boolean"), ("First-Order Logic uses predicates and objects", "first-order|fol|predicates|objects|relations"), ("Universal and Existential quantifiers", "quantifiers|forall|exists|universal|existential")]
-    ),
-    "Module - VII: State Space Planning": (
-        "Describe the STRIPS planning formalism: states, goals, preconditions, and effects.",
-        "STRIPS represents states as conjunctions of function-free ground literals. Goals are desired literal states. Operators consist of Preconditions (must hold before action execution) and Effects containing Add lists (new literals) and Delete lists (retracted literals).",
-        [("STRIPS components states actions goals", "strips|state|action|goal|planning"), ("Preconditions required before action", "precondition|must hold|prerequisite"), ("Add list and Delete list effects", "add list|delete list|effects|literals")]
-    ),
-    "Module - VIII: Uncertainty in AI": (
-        "How do Bayesian Networks represent joint probability distributions compactly using DAGs?",
-        "A Bayesian Network is a Directed Acyclic Graph (DAG) whose nodes represent random variables and directed arcs represent conditional dependencies. It factorizes the joint distribution as P(X1..Xn) = Product P(Xi | Parents(Xi)), exploiting conditional independence.",
-        [("Directed Acyclic Graph (DAG)", "dag|directed acyclic graph|nodes|edges"), ("nodes as variables edges as dependencies", "random variables|conditional|causal|parents"), ("compact factorization product of P(Xi|Parents)", "factorization|product|parents|joint probability|compact")]
-    ),
-    "Module - IX: General Model of Learning Agents": (
-        "Explain the roles of Critic, Learning Element, Performance Element, and Problem Generator.",
-        "Performance Element executes actions based on percepts. Critic evaluates agent success against an external performance benchmark. Learning Element modifies performance components based on critic feedback. Problem Generator proposes exploratory actions.",
-        [("Performance Element selects actions", "performance element|action|external|selects"), ("Critic evaluates against performance standard", "critic|evaluates|feedback|standard"), ("Learning Element improves and Problem Generator explores", "learning element|problem generator|exploration|sub-goals|improve")]
-    ),
-    "Module - X: Applications of AI": (
-        "Discuss modern AI applications in NLP and Computer Vision, and highlight a major ethical challenge.",
-        "Applications include Large Language Models and machine translation in NLP, and autonomous vehicle perception and medical radiology imaging in Computer Vision. Major ethical concerns involve algorithmic bias, privacy, hallucination risks, and accountability.",
-        [("NLP application translation or LLMs", "nlp|natural language|llm|translation|chat"), ("Vision application autonomous vehicles or diagnosis", "computer vision|vision|medical|autonomous|driving|image"), ("ethical issues bias fairness safety", "bias|ethics|fairness|privacy|accountability")]
-    ),
+    # --- Fundamentals of Artificial Intelligence (FAI) ---
+    "Module - I: Introduction to Artificial Intelligence": {
+        "question": "According to the PEAS framework used to specify intelligent agents in AI, what does PEAS stand for?",
+        "options": [
+            "A) Planning, Execution, Actuators, Sensors",
+            "B) Performance measure, Environment, Actuators, Sensors",
+            "C) Processing power, Efficiency, Accuracy, Speed",
+            "D) Perception, Evolution, Adaptation, Strategy"
+        ],
+        "answer": "B",
+        "explanation": "The PEAS framework formalizes the task environment of an agent by defining: Performance measure, Environment, Actuators (to take actions), and Sensors (to perceive)."
+    },
+    "Module - II: Uninformed Search Strategies": {
+        "question": "Which uninformed search algorithm is guaranteed to find the shallowest optimal solution when all step costs are equal, and what data structure does it use?",
+        "options": [
+            "A) Depth-First Search (DFS) using a LIFO Stack.",
+            "B) Breadth-First Search (BFS) using a FIFO Queue.",
+            "C) Depth-Limited Search (DLS) using a Hash Map.",
+            "D) Bidirectional Search using a Priority Heap."
+        ],
+        "answer": "B",
+        "explanation": "Breadth-First Search (BFS) expands nodes level by level using a FIFO queue. When step costs are equal, it guarantees finding the shallowest, optimal goal node."
+    },
+    "Module - III: Informed Search Strategies": {
+        "question": "For the A* search algorithm to be guaranteed optimal in graph search, what condition must its heuristic function h(n) satisfy?",
+        "options": [
+            "A) The heuristic must overestimate the actual remaining path cost: h(n) > h*(n).",
+            "B) The heuristic must be consistent (monotonic), meaning h(n) ≤ c(n, a, n') + h(n'), which implies admissibility h(n) ≤ h*(n).",
+            "C) The heuristic must evaluate strictly to zero for all non-terminal nodes.",
+            "D) The heuristic must equal the cumulative path cost g(n) from the start node."
+        ],
+        "answer": "B",
+        "explanation": "In A* graph search, a consistent (or monotonic) heuristic satisfies the triangle inequality and guarantees that the first time a state is expanded, the path found is optimal."
+    },
+    "Module - IV: Optimal Decisions in Games": {
+        "question": "What is the primary objective of Alpha-Beta Pruning in Minimax game playing trees?",
+        "options": [
+            "A) To prune subtrees that cannot possibly influence the final minimax decision, reducing search time without altering the optimal outcome.",
+            "B) To convert zero-sum competitive games into cooperative stochastic negotiations.",
+            "C) To guarantee victory against an adversary who makes irrational mistakes.",
+            "D) To replace tree exploration with genetic mutation algorithms."
+        ],
+        "answer": "A",
+        "explanation": "Alpha-Beta pruning tracks the best alternatives for MAX (α) and MIN (β). Any branch where α ≥ β is pruned because neither player would allow game play to enter that state, preserving the minimax value."
+    },
+    "Module - V: Inferences": {
+        "question": "In Propositional Logic, what does the Modus Ponens deduction rule state?",
+        "options": [
+            "A) From P → Q and ¬Q, infer ¬P.",
+            "B) From P → Q and P, infer Q.",
+            "C) From P ∨ Q and ¬P, infer Q.",
+            "D) From P and Q, infer P ∧ Q."
+        ],
+        "answer": "B",
+        "explanation": "Modus Ponens (affirming the antecedent) states that if the conditional statement 'P implies Q' is true, and the antecedent 'P' is true, then the consequent 'Q' must be true."
+    },
+    "Module - VI: Knowledge Representation & Reasoning": {
+        "question": "How does First-Order Logic (FOL) extend the representational expressiveness of Propositional Logic?",
+        "options": [
+            "A) By introducing objects, relations, predicates, functions, and quantifiers (∀, ∃).",
+            "B) By restricting sentences strictly to Horn clauses.",
+            "C) By substituting symbolic inference with backpropagation on floating-point weights.",
+            "D) By eliminating the concepts of truth values and validity."
+        ],
+        "answer": "A",
+        "explanation": "First-Order Logic commits to an ontology of objects and relations, adding predicates, functions, and universal (∀) and existential (∃) quantifiers to express general rules."
+    },
+    "Module - VII: State Space Planning": {
+        "question": "In classical STRIPS / PDDL planning representations, what three components define an action schema?",
+        "options": [
+            "A) Start state, Goal state, and Path heuristic.",
+            "B) Preconditions (must hold before action), Add list (predicates made true), and Delete list (predicates made false).",
+            "C) Actuator voltage, Sensor noise, and Transition probability matrix.",
+            "D) Discount factor γ, Reward function R, and Exploration rate ε."
+        ],
+        "answer": "B",
+        "explanation": "A STRIPS action schema consists of: Preconditions (facts that must be true to execute the action), Add effects (facts made true), and Delete effects (facts that cease to be true)."
+    },
+    "Module - VIII: Uncertainty in AI": {
+        "question": "How does a Bayesian Belief Network represent conditional independence among variables?",
+        "options": [
+            "A) Through a cyclic undirected graph where all variables are interdependent.",
+            "B) Through a Directed Acyclic Graph (DAG) where each variable is conditionally independent of its non-descendants given its parents.",
+            "C) Through a single dense joint probability table with 2^n unconnected entries.",
+            "D) By eliminating conditional probability tables in favor of deterministic lookups."
+        ],
+        "answer": "B",
+        "explanation": "A Bayesian Network is a Directed Acyclic Graph (DAG) where the topological structure encodes conditional independence: each node is conditionally independent of its non-descendants given its parents."
+    },
+    "Module - IX: General Model of Learning Agents": {
+        "question": "In the standard architecture of a learning agent, what is the role of the Critic component?",
+        "options": [
+            "A) It executes physical motor actions in the environment.",
+            "B) It evaluates the agent's behavior against an external performance standard and provides feedback to the learning element.",
+            "C) It stores raw sensor pixels directly in a database.",
+            "D) It selects exploratory sub-optimal actions to test actuators."
+        ],
+        "answer": "B",
+        "explanation": "The Critic observes the environment and compares agent performance against an external performance standard, generating learning feedback signals."
+    },
+    "Module - X: Applications of AI": {
+        "question": "Which of the following best describes the application of Computer Vision in autonomous vehicle navigation?",
+        "options": [
+            "A) Compiling SQL indexes for fleet databases.",
+            "B) Real-time semantic segmentation, pedestrian/vehicle detection, and lane boundary localization from optical sensor video feeds.",
+            "C) Encrypting passenger credit card transactions over Bluetooth.",
+            "D) Calibrating engine combustion spark plugs using rule engines."
+        ],
+        "answer": "B",
+        "explanation": "Computer Vision uses deep convolutional neural networks to perform semantic segmentation, object detection, and lane tracking on camera feeds to guide vehicle steering and braking."
+    },
 
-    # --- Advanced DBMS ---
-    "Module 1: Relational Query Languages & Extended ER Models": (
-        "Compare procedural Relational Algebra with declarative Relational Calculus, and explain EER Specialization vs Generalization.",
-        "Relational Algebra specifies procedural operations (select sigma, project pi, join). Relational Calculus specifies declarative query conditions without execution sequence. In EER models, Specialization is top-down defining subclasses; Generalization is bottom-up merging entities.",
-        [("Relational Algebra is procedural", "relational algebra|procedural|how|operators|sigma|project|join"), ("Relational Calculus is declarative", "relational calculus|declarative|what|tuple|domain"), ("Specialization top-down vs Generalization bottom-up", "specialization|generalization|extended er|eer|subclass|superclass|top-down|bottom-up")]
-    ),
-    "Module 2: Fundamentals of Normalization": (
-        "Explain 1NF, 2NF, and 3NF conditions and the anomalies they eliminate.",
-        "1NF mandates atomic values and eliminates repeating groups. 2NF requires 1NF and removes partial functional dependencies (all non-prime attributes fully dependent on candidate keys). 3NF requires 2NF and eliminates transitive functional dependencies.",
-        [("1NF atomic values no repeating groups", "1nf|first normal form|atomic|repeating groups"), ("2NF eliminates partial dependency", "2nf|second normal form|partial dependency|full functional dependency"), ("3NF eliminates transitive dependency", "3nf|third normal form|transitive dependency|non-key")]
-    ),
-    "Module 3: Advanced Normalization": (
-        "Define Boyce-Codd Normal Form (BCNF) and 4NF, explaining when 3NF is insufficient.",
-        "BCNF requires that for every functional dependency X -> Y, X must be a superkey. 3NF is insufficient when a non-superkey determines a prime attribute. 4NF eliminates non-trivial Multi-Valued Dependencies (MVDs) where X ->-> Y exists without X being a superkey.",
-        [("BCNF requires determinant X to be a superkey", "bcnf|boyce-codd|superkey|determinant|x is a superkey"), ("3NF allows prime attributes on RHS violating BCNF", "3nf allows|prime attribute|candidate key|violates bcnf"), ("4NF eliminates multivalued dependencies", "4nf|fourth normal form|multivalued|mvd|x ->-> y")]
-    ),
-    "Module 4: Transactions in DBMS": (
-        "State and define the ACID properties of database transactions.",
-        "Atomicity: all transaction steps complete or none do (all-or-nothing rollback). Consistency: preserves all database integrity constraints. Isolation: concurrent executions yield results equivalent to serial execution. Durability: committed updates persist permanently across crashes.",
-        [("Atomicity all or nothing", "atomicity|all or nothing|abort|rollback"), ("Consistency preserves integrity constraints", "consistency|integrity|valid state|constraints"), ("Isolation and Durability", "isolation|concurrent|interference|durability|persist|crash|committed")]
-    ),
-    "Module 5: Concurrency Control": (
-        "Explain Two-Phase Locking (2PL) and compare Strict 2PL vs Rigorous 2PL.",
-        "2PL enforces a Growing Phase (locks acquired, none released) and Shrinking Phase (locks released, none acquired). Strict 2PL holds exclusive (X) locks until transaction completion, preventing cascading rollbacks; Rigorous 2PL holds all shared and exclusive locks until completion.",
-        [("Growing phase acquires locks only", "growing phase|acquire locks|obtain locks|cannot release"), ("Shrinking phase releases locks only", "shrinking phase|release locks|cannot acquire"), ("guarantees conflict serializability", "serializability|conflict serializable|lock point")]
-    ),
-    "Module 6: Storage and File Structure": (
-        "Compare Primary Index, Secondary Index, and Dense vs Sparse indexing in database storage.",
-        "A Primary Index is ordered on the physical sorting key of the file; a Secondary Index indexes non-ordered attributes. A Dense index has an entry for every record in the data file; a Sparse index has entries only for selected blocks, reducing index size.",
-        [("Primary index on ordered field", "primary index|ordered|ordering key|clustered"), ("Secondary index on non-ordered field", "secondary index|non-ordering|unclustered"), ("Dense has entry per record sparse per block", "dense|sparse|every record|every search key|block")]
-    ),
-    "Module 7: Database Recovery Techniques": (
-        "Explain Write-Ahead Logging (WAL) and how Checkpointing accelerates system recovery.",
-        "Write-Ahead Logging (WAL) requires log records describing changes to be flushed to stable storage before corresponding dirty data pages reach disk. Checkpoints periodically write all dirty buffers and a checkpoint record, bounding recovery scan time.",
-        [("Write-Ahead Logging log before data write", "write-ahead|wal|log before|stable storage|redo undo"), ("Checkpoints limit recovery log scan", "checkpoint|dirty buffers|flush|recovery time|speed up"), ("Redo and Undo mechanisms", "redo|undo|committed|uncommitted")]
-    ),
-    "Module 8: Introduction to NoSQL Databases and MongoDB": (
-        "Outline the four categories of NoSQL databases and describe MongoDB's document-oriented architecture.",
-        "NoSQL categories: Document, Key-Value, Column-Family, and Graph. MongoDB stores flexible, semi-structured BSON (Binary JSON) documents inside Collections without fixed schemas, offering high horizontal scalability and dynamic indexing.",
-        [("four NoSQL types document key-value column graph", "document|key-value|column|graph|nosql|mongodb|redis|cassandra"), ("MongoDB uses BSON/JSON documents in collections", "bson|json|binary json|document|collection|schema-less|flexible"), ("advantages like horizontal scaling", "scaling|sharding|horizontal|nested")]
-    ),
-    "Module 9: Performing CRUD Operations in MongoDB": (
-        "Provide MongoDB shell commands for Create, Read, Update, and Delete operations.",
-        "Create: db.users.insertOne({name: 'Alex', term: 1}) or insertMany([...]). Read: db.users.find({term: 1}). Update: db.users.updateOne({name: 'Alex'}, {$set: {score: 90}}). Delete: db.users.deleteOne({name: 'Alex'}).",
-        [("insertOne and insertMany for Create", "insertone|insertmany|insert|create"), ("find and findOne for Read", "find|findone|query|read"), ("updateOne with $set and deleteOne for Update/Delete", "updateone|updatemany|$set|update|deleteone|deletemany|delete")]
-    ),
-    "Module 10: Advanced Querying and Data Aggregation in MongoDB": (
-        "Explain MongoDB's Aggregation Pipeline and the functions of $match, $group, $project, and $sort.",
-        "The Aggregation Pipeline runs documents through sequential pipeline stages. $match filters matching documents; $project includes, computes, or renames fields; $group aggregates documents using accumulator expressions ($sum, $avg); $sort reorders the resulting stream.",
-        [("aggregation pipeline transforms documents through stages", "aggregation pipeline|pipeline|stages|sequential"), ("$match filters and $project selects fields", "$match|filter|$project|reshape|select"), ("$group aggregates by key with accumulators", "$group|accumulators|$sum|$avg|group by|$sort")]
-    ),
+    # --- Advanced DBMS (ADBMS) ---
+    "Module 1: Relational Query Languages & Extended ER Models": {
+        "question": "In Extended Entity-Relationship (EER) modeling, what distinguishes Specialization from Generalization?",
+        "options": [
+            "A) Specialization is a bottom-up process, while generalization is top-down.",
+            "B) Specialization is a top-down process dividing an entity into lower-level subclasses; Generalization is a bottom-up process synthesizing multiple entities into a generalized superclass.",
+            "C) Generalization deletes primary keys, while specialization creates foreign keys.",
+            "D) Specialization applies strictly to weak entity sets without partial keys."
+        ],
+        "answer": "B",
+        "explanation": "Specialization is top-down (identifying sub-groupings within an entity set based on specific attributes). Generalization is bottom-up (synthesizing shared attributes of multiple entity sets into a generalized superclass)."
+    },
+    "Module 2: Fundamentals of Normalization": {
+        "question": "A relational table R is in Second Normal Form (2NF) if and only if it is in 1NF and which additional rule is satisfied?",
+        "options": [
+            "A) Every non-prime attribute is fully functionally dependent on the entire candidate key (no partial functional dependency).",
+            "B) No non-prime attribute is transitively dependent on the primary key.",
+            "C) Every determinant is a candidate key.",
+            "D) All multi-valued dependencies are eliminated."
+        ],
+        "answer": "A",
+        "explanation": "2NF requires 1NF plus the elimination of partial dependencies: no non-prime attribute may depend on only a subset of a composite candidate key."
+    },
+    "Module 3: Advanced Normalization": {
+        "question": "What stricter condition does Boyce-Codd Normal Form (BCNF) enforce compared to Third Normal Form (3NF)?",
+        "options": [
+            "A) For every non-trivial functional dependency X → Y, X must be a superkey (eliminating cases where Y is merely a prime attribute).",
+            "B) BCNF permits transitive dependencies if the determinant is a candidate key.",
+            "C) BCNF requires Fourth Normal Form compliance.",
+            "D) BCNF does not require 2NF compliance."
+        ],
+        "answer": "A",
+        "explanation": "In 3NF, X → Y is permitted if X is a superkey OR Y is a prime attribute. BCNF removes the second relaxation: for EVERY non-trivial dependency X → Y, X MUST be a superkey."
+    },
+    "Module 4: Transactions in DBMS": {
+        "question": "What does the Durability property in the ACID transaction model guarantee?",
+        "options": [
+            "A) That concurrent transactions execute without reading uncommitted dirty data.",
+            "B) That once a transaction successfully commits, its state changes persist permanently in non-volatile storage even after a system crash or power outage.",
+            "C) That all operations within a transaction either execute completely or abort without partial side-effects.",
+            "D) That table constraints are never violated during execution."
+        ],
+        "answer": "B",
+        "explanation": "Durability guarantees that committed data is written to non-volatile storage (via write-ahead logging and checkpointing) and will not be lost during a crash."
+    },
+    "Module 5: Concurrency Control": {
+        "question": "In the Two-Phase Locking (2PL) protocol, what are transactions permitted to do during the Shrinking Phase?",
+        "options": [
+            "A) Acquire new locks and release old locks simultaneously.",
+            "B) Release existing locks, but strictly forbidden from acquiring any new locks.",
+            "C) Upgrade shared locks to exclusive locks.",
+            "D) Force immediate aborts of conflicting active transactions."
+        ],
+        "answer": "B",
+        "explanation": "In 2PL, the growing phase allows acquiring locks. Once the transaction releases its first lock, it enters the shrinking phase where it can only release locks and CANNOT acquire any new locks."
+    },
+    "Module 6: Storage and File Structure": {
+        "question": "Why do relational database engines use B+ Trees instead of standard B-Trees for disk-based indexing?",
+        "options": [
+            "A) B+ Trees do not require balanced height.",
+            "B) B+ Trees store all actual record pointers/data exclusively in leaf nodes and link leaf nodes sequentially, dramatically accelerating range queries and full scans.",
+            "C) B+ Trees have O(n) search time while B-Trees have O(1).",
+            "D) B+ Trees only fit in CPU L1 cache memory."
+        ],
+        "answer": "B",
+        "explanation": "In B+ Trees, internal nodes only contain index keys, maximizing branching factor. Leaf nodes store actual pointers/data and are linked as a doubly-linked list, enabling fast sequential range queries."
+    },
+    "Module 7: Database Recovery Techniques": {
+        "question": "What is the foundational requirement of the Write-Ahead Logging (WAL) protocol in database crash recovery?",
+        "options": [
+            "A) Log records describing updates must be flushed to stable non-volatile storage BEFORE the modified database data pages are written to disk.",
+            "B) Data pages must be written to disk before log records are generated in memory.",
+            "C) Log files can only be written during scheduled weekend backups.",
+            "D) Transactions cannot commit until all tables are defragmented."
+        ],
+        "answer": "A",
+        "explanation": "WAL requires that log records describing a database modification must be persisted to non-volatile log storage before the corresponding dirty data page is written to disk, ensuring REDO/UNDO capability."
+    },
+    "Module 8: Introduction to NoSQL Databases and MongoDB": {
+        "question": "Which data model and CAP theorem trade-off does MongoDB primarily embody?",
+        "options": [
+            "A) Column-family model with pure Availability and Partition Tolerance (AP).",
+            "B) Document-oriented data model (BSON format), typically configured for Consistency and Partition Tolerance (CP) in replica sets.",
+            "C) Pure Graph model with ACID multi-table joins.",
+            "D) In-memory Key-Value store with no secondary index support."
+        ],
+        "answer": "B",
+        "explanation": "MongoDB stores flexible document collections in BSON (Binary JSON) format. In replica sets, it prioritizes Consistency and Partition Tolerance (CP) under network splits."
+    },
+    "Module 9: Performing CRUD Operations in MongoDB": {
+        "question": "In MongoDB, which command updates specific fields of a matching document without replacing the entire document?",
+        "options": [
+            "A) `db.collection.update({_id: 1}, {status: 'active'})`",
+            "B) `db.collection.updateOne({_id: 1}, {$set: {status: 'active'}})`",
+            "C) `db.collection.replaceOne({_id: 1}, {status: 'active'})`",
+            "D) `db.collection.insert({_id: 1, status: 'active'})`",
+        ],
+        "answer": "B",
+        "explanation": "The `$set` operator in `updateOne()` modifies only the specified fields, leaving other fields intact. Without `$set`, an update replaces the document."
+    },
+    "Module 10: Advanced Querying and Data Aggregation in MongoDB": {
+        "question": "In MongoDB's Aggregation Pipeline, what are the primary roles of `$match` and `$group`?",
+        "options": [
+            "A) `$match` creates unique indexes, while `$group` drops temporary collections.",
+            "B) `$match` filters incoming documents like a WHERE clause, and `$group` aggregates documents by an accumulator key (`_id`) to compute sums, averages, or counts.",
+            "C) `$match` performs relational SQL joins, while `$group` sorts documents in ascending order.",
+            "D) `$match` converts BSON to XML, while `$group` writes data to disk."
+        ],
+        "answer": "B",
+        "explanation": "In MongoDB's aggregation framework, `$match` filters the document stream to pass only matching documents, and `$group` groups documents by a specified key and applies accumulators like `$sum` and `$avg`."
+    }
 }
 
 
@@ -404,8 +644,11 @@ class QuizQuestion(BaseModel):
     topic: str
     subject: str
     question: str
-    model_answer: str
-    concepts: List[List[str]]            # [[label, "kw1|kw2"], ...]
+    options: List[str] = Field(default_factory=list)
+    correct_option: str = ""
+    explanation: str = ""
+    model_answer: str = ""
+    concepts: List[List[str]] = Field(default_factory=list)
     source: str = "offline bank"
 
 
@@ -981,31 +1224,66 @@ class SchedulerAgent(ReActAgent):
 # --------------------------------------------------------------------------- Evaluator Agent
 def bank_question(t: TopicState) -> QuizQuestion:
     if t.name in QUESTION_BANK:
-        q, ans, concepts = QUESTION_BANK[t.name]
-        return QuizQuestion(topic=t.name, subject=t.subject, question=q, model_answer=ans, concepts=[list(c) for c in concepts])
-    key = t.name.lower().split()[0]
-    return QuizQuestion(topic=t.name, subject=t.subject, question=f"Explain the key ideas of {t.name} and give one worked example.",
-                        model_answer=f"A strong answer defines {t.name}, explains why it matters and works one example.",
-                        concepts=[["a clear definition", key], ["an example", "example|for instance|e.g"]])
+        entry = QUESTION_BANK[t.name]
+        return QuizQuestion(
+            topic=t.name,
+            subject=t.subject,
+            question=entry["question"],
+            options=entry["options"],
+            correct_option=entry["answer"],
+            explanation=entry.get("explanation", ""),
+            model_answer=entry.get("explanation", entry["options"][0]),
+            source="offline bank"
+        )
+    return QuizQuestion(
+        topic=t.name,
+        subject=t.subject,
+        question=f"Which of the following statements is correct regarding {t.name} in {t.subject}?",
+        options=[
+            f"A) Core concepts of {t.name} are essential for foundational mastery.",
+            f"B) {t.name} is completely non-standard and obsolete.",
+            f"C) {t.name} has no relevance to academic examinations.",
+            f"D) None of the above."
+        ],
+        correct_option="A",
+        explanation=f"{t.name} is a core curriculum module.",
+        model_answer=f"{t.name} principles.",
+        source="offline bank"
+    )
 
 
 def heuristic_grade(q: QuizQuestion, answer: str) -> GradeResult:
-    text = (answer or "").lower().strip()
-    if len(text.split()) < 3:
-        return GradeResult(topic=q.topic, subject=q.subject, score=0.0, answered=False, missing=[c[0] for c in q.concepts],
-                           misconception="No attempt recorded.", next_step="Re-read the topic, then try to answer from memory.", model_answer=q.model_answer)
-    hits = [c[0] for c in q.concepts if any(k.strip() and k.strip() in text for k in c[1].split("|"))]
-    miss = [c[0] for c in q.concepts if c[0] not in hits]
-    cov = len(hits) / max(1, len(q.concepts))
-    depth = min(1.0, len(text.split()) / 25)
-    score = round(min(10.0, 10 * cov * (0.7 + 0.3 * depth)), 1)
-    if not hits:
-        mis, nxt = "Foundational gap: none of the core ideas appeared.", "Re-learn the basics before more practice."
-    elif miss:
-        mis, nxt = f"Partial understanding: solid on {hits[0]}, but missing {miss[0]}.", f"Drill {miss[0]} with 3 flashcards, then retry."
+    text = (answer or "").strip()
+    if not text:
+        return GradeResult(
+            topic=q.topic, subject=q.subject, score=0.0, answered=False,
+            missing=[f"Correct Option: {q.correct_option}"],
+            misconception="No option was selected.",
+            next_step="Select the best choice from the available options.",
+            model_answer=f"Option {q.correct_option}: {q.explanation}"
+        )
+    chosen_letter = text.split(")")[0].strip().upper() if ")" in text else text[:1].upper()
+    is_correct = bool(chosen_letter == q.correct_option.upper() or text.startswith(q.correct_option))
+    if is_correct:
+        return GradeResult(
+            topic=q.topic, subject=q.subject, score=10.0, answered=True,
+            correct=[f"Option {q.correct_option} (Correct)"],
+            missing=[],
+            misconception="None. Concept correctly demonstrated.",
+            next_step="Maintain mastery with spaced repetition.",
+            model_answer=f"Option {q.correct_option}: {q.explanation}",
+            source="MCQ Key"
+        )
     else:
-        mis, nxt = "No misconception detected.", "Extend the interval and test with a harder variant." + (" Add detail for full marks." if depth < 1 else "")
-    return GradeResult(topic=q.topic, subject=q.subject, score=score, correct=hits, missing=miss, misconception=mis, next_step=nxt, model_answer=q.model_answer)
+        return GradeResult(
+            topic=q.topic, subject=q.subject, score=0.0, answered=True,
+            correct=[],
+            missing=[f"Correct Answer: Option {q.correct_option}"],
+            misconception=f"Selected {text[:30]}... instead of Option {q.correct_option}.",
+            next_step=q.explanation or "Review the core concepts for this module.",
+            model_answer=f"Option {q.correct_option}: {q.explanation}",
+            source="MCQ Key"
+        )
 
 
 class EvaluatorAgent(ReActAgent):
@@ -1024,9 +1302,9 @@ class EvaluatorAgent(ReActAgent):
             "notify_scheduler": (self.t_notify, "Write adjustments back to the Scheduler Agent"),
         }
 
-    def generate(self, n: int) -> List[QuizQuestion]:
+    def generate(self, n: int, subject: Optional[str] = None, allowed_topics: Optional[List[str]] = None) -> List[QuizQuestion]:
         self.state.quiz, self.state.quiz_graded, self.state.last_grades = [], False, []
-        self.loop({"mode": "generate", "n": n})
+        self.loop({"mode": "generate", "n": n, "subject": subject, "allowed_topics": allowed_topics})
         return self.state.quiz
 
     def grade(self, answers: List[str]) -> List[GradeResult]:
@@ -1057,21 +1335,32 @@ class EvaluatorAgent(ReActAgent):
 
     def t_select(self, mem):
         st = self.state
+        subj_filter = mem.get("subject")
+        allowed = mem.get("allowed_topics")
+
+        candidates = list(st.topics.values())
+        if allowed:
+            candidates = [t for t in candidates if t.name in allowed]
+        if subj_filter and subj_filter != "All Subjects":
+            candidates = [t for t in candidates if t.subject == subj_filter]
+
+        if not candidates:
+            # Fallback if candidates empty: generate from curriculum
+            if subj_filter and subj_filter in CURRICULUM:
+                mods = allowed if allowed else list(CURRICULUM[subj_filter].keys())
+                for m in mods:
+                    diff, _ = CURRICULUM[subj_filter].get(m, (0.5, []))
+                    candidates.append(TopicState(name=m, subject=subj_filter, difficulty=diff, mastery=0.5))
+            else:
+                for sname, s_mods in CURRICULUM.items():
+                    for m in s_mods:
+                        if not allowed or m in allowed:
+                            diff, _ = s_mods.get(m, (0.5, []))
+                            candidates.append(TopicState(name=m, subject=sname, difficulty=diff, mastery=0.5))
+
         recent = [l.topic for l in st.logs[-6:]]
-        ranked = sorted(st.topics.values(), key=lambda t: priority(t) - (0.15 if t.name in recent else 0), reverse=True)
-        chosen: List[TopicState] = []
-        per: Dict[str, int] = {}
-        for t in ranked:
-            if per.get(t.subject, 0) < 2:
-                chosen.append(t)
-                per[t.subject] = per.get(t.subject, 0) + 1
-            if len(chosen) == mem["n"]:
-                break
-        for t in ranked:
-            if len(chosen) >= mem["n"]:
-                break
-            if t not in chosen:
-                chosen.append(t)
+        ranked = sorted(candidates, key=lambda t: priority(t) - (0.15 if t.name in recent else 0), reverse=True)
+        chosen = ranked[:mem["n"]]
         mem["topics"], mem["selected"] = [t.name for t in chosen], True
         return "Selected: " + ", ".join(f"{t.name} ({t.mastery:.0%})" for t in chosen)
 
@@ -1232,9 +1521,9 @@ class Orchestrator:
         add_trace(st, self.scheduler.name, "ACTION", f"log_completion({d:%d %b}): {n} session(s) applied to spaced-repetition state, cursor to {st.cursor:%d %b}.")
         return f"Logged {n} completed session(s) for {d:%a %d %b}. Mastery and review intervals updated."
 
-    def make_quiz(self, n: int) -> List[QuizQuestion]:
+    def make_quiz(self, n: int, subject: Optional[str] = None, allowed_topics: Optional[List[str]] = None) -> List[QuizQuestion]:
         self.transition(Phase.QUIZ_READY, "quiz requested")
-        return self.evaluator.generate(n)
+        return self.evaluator.generate(n, subject=subject, allowed_topics=allowed_topics)
 
     def submit(self, answers: List[str]) -> str:
         st = self.state
@@ -2874,6 +3163,211 @@ button.secondary, button[variant="secondary"] {
   margin: 0 auto !important;
 }
 
+
+/* ========================================================================== */
+/* Quiz Arena Styling & Scorecard                                             */
+/* ========================================================================== */
+.quiz-subject-header-row {
+  margin-bottom: 8px !important;
+}
+
+.quiz-subject-radio .wrap {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.quiz-subject-radio label {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.quiz-subject-radio label:hover {
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+.quiz-subject-radio label.selected,
+.quiz-subject-radio label:has(input:checked) {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(14, 165, 233, 0.15) 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
+}
+
+.quiz-quick-action-row {
+  display: flex !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.quiz-pill-btn {
+  background: rgba(30, 41, 59, 0.6) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  color: #cbd5e1 !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 12px !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+.quiz-pill-btn:hover {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+.mcq-card-radio {
+  background: rgba(18, 24, 38, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  padding: 16px 18px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.mcq-card-radio .wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+.mcq-card-radio label {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-size: 12.5px !important;
+  color: #e2e8f0 !important;
+  line-height: 1.4 !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.mcq-card-radio label:hover {
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  background: rgba(30, 41, 59, 0.7) !important;
+}
+
+.mcq-card-radio label.selected,
+.mcq-card-radio label:has(input:checked) {
+  background: rgba(14, 165, 233, 0.15) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+}
+
+.quiz-scorecard {
+  background: linear-gradient(135deg, rgba(18, 24, 38, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 16px !important;
+  padding: 18px 22px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.scorecard-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 14px !important;
+}
+
+.scorecard-badge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+}
+
+.scorecard-marks {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  color: #38bdf8 !important;
+  margin: 2px 0 0 0 !important;
+}
+
+.grade-badge {
+  padding: 6px 14px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.grade-a {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  color: #34d399 !important;
+}
+
+.grade-b {
+  background: rgba(56, 189, 248, 0.18) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+}
+
+.grade-c {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  color: #fbbf24 !important;
+}
+
+.grade-d {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+.scorecard-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 10px !important;
+}
+
+.stat-tile {
+  background: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.stat-label {
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+}
+
+.stat-val {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+
+.text-green { color: #34d399 !important; }
+.text-red { color: #f87171 !important; }
+.text-cyan { color: #38bdf8 !important; }
+
 /* Primary Build Plan Button from Image 2 */
 .build-plan-button button {
   background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
@@ -3234,24 +3728,168 @@ def set_horizon(orch, horizon):
     return orch, render_table(orch.state, orch.horizon)
 
 
-def make_quiz(orch, n):
-    hidden = [gr.update(visible=False, value="")] * 6
-    if _need_plan(orch):
-        return (orch, "Build a plan first.", *hidden, "", *view(orch))
-    n = int(n)
-    qs = orch.make_quiz(n)
-    md = "\n\n".join(f"**Q{i}. {q.topic}** ({q.subject}, {q.source})\n\n{q.question}" for i, q in enumerate(qs, 1))
-    boxes = [gr.update(visible=i < len(qs), value="", label=f"Your answer to Q{i + 1}") for i in range(6)]
-    return (orch, md, *boxes, "", *view(orch))
+def make_quiz(orch, n, subj_choice, c_ps, c_dsa, c_ai, c_dbms):
+    if orch is None:
+        orch = Orchestrator()
+    
+    target_subject = None
+    subj_str = str(subj_choice or "")
+    if "Maths" in subj_str or "Probability" in subj_str:
+        target_subject = "Probability and Statistics"
+    elif "C++" in subj_str or "DSA" in subj_str:
+        target_subject = "DSA C++"
+    elif "FAI" in subj_str or "Artificial Intelligence" in subj_str:
+        target_subject = "Fundamentals of Artificial Intelligence"
+    elif "ADBMS" in subj_str or "DBMS" in subj_str:
+        target_subject = "Advanced DBMS"
+
+    # Gather selected syllabus modules from the checkboxes
+    if target_subject == "Probability and Statistics":
+        allowed_mods = list(c_ps) if c_ps else list(CURRICULUM["Probability and Statistics"].keys())
+    elif target_subject == "DSA C++":
+        allowed_mods = list(c_dsa) if c_dsa else list(CURRICULUM["DSA C++"].keys())
+    elif target_subject == "Fundamentals of Artificial Intelligence":
+        allowed_mods = list(c_ai) if c_ai else list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys())
+    elif target_subject == "Advanced DBMS":
+        allowed_mods = list(c_dbms) if c_dbms else list(CURRICULUM["Advanced DBMS"].keys())
+    else:
+        # All subjects
+        allowed_mods = (list(c_ps) if c_ps else list(CURRICULUM["Probability and Statistics"].keys())) + \
+                       (list(c_dsa) if c_dsa else list(CURRICULUM["DSA C++"].keys())) + \
+                       (list(c_ai) if c_ai else list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys())) + \
+                       (list(c_dbms) if c_dbms else list(CURRICULUM["Advanced DBMS"].keys()))
+
+    # Sync into orch topics
+    for m in allowed_mods:
+        if m not in orch.state.topics:
+            for sname, c_dict in CURRICULUM.items():
+                if m in c_dict:
+                    diff, _ = c_dict[m]
+                    orch.state.topics[m] = TopicState(name=m, subject=sname, difficulty=diff, mastery=0.5)
+
+    n_val = int(n or 4)
+    qs = orch.make_quiz(n_val, subject=target_subject, allowed_topics=allowed_mods)
+    orch.state.quiz = qs
+    orch.state.quiz_graded = False
+
+    subj_display = target_subject if target_subject else "All Active Subjects"
+    status_md = f"### 🎯 Targeted Multiple Choice Assessment Ready\nGenerated **{len(qs)} MCQ question(s)** for **{subj_display}** based on your active syllabus. Select your answers below and click **Submit Answers & Compute Marks**."
+
+    radios = []
+    for i in range(6):
+        if i < len(qs):
+            q = qs[i]
+            radios.append(gr.update(
+                visible=True,
+                choices=q.options,
+                value=None,
+                label=f"Q{i+1}: [{q.subject} • {q.topic}]\n\n{q.question}"
+            ))
+        else:
+            radios.append(gr.update(visible=False, choices=[], value=None, label=""))
+
+    return (orch, status_md, *radios, "", *view(orch))
 
 
 def submit_quiz(orch, *answers):
-    if _need_plan(orch) or not orch.state.quiz:
-        return (orch, "Generate a quiz first.", *view(orch))
+    if orch is None or not orch.state.quiz:
+        return (orch, "### ⚠️ Please generate a quiz first.", *view(orch))
     if orch.state.quiz_graded:
-        return (orch, "This quiz is already graded. Generate a new one.", *view(orch))
-    note = orch.submit(list(answers)[: len(orch.state.quiz)])
-    return (orch, render_feedback(orch.state.last_grades, note), *view(orch))
+        return (orch, "### ℹ️ This quiz has already been evaluated and graded. Generate a new quiz to practice more.", *view(orch))
+
+    qs = orch.state.quiz
+    grades = []
+    marks_obtained = 0
+    total_marks = len(qs)
+
+    for i, q in enumerate(qs):
+        ans = str(answers[i]).strip() if i < len(answers) and answers[i] else ""
+        chosen_letter = ans.split(")")[0].strip().upper() if ")" in ans else ans[:1].upper()
+        is_correct = bool(ans and (chosen_letter == q.correct_option.upper() or ans.startswith(q.correct_option)))
+        score = 10.0 if is_correct else 0.0
+        if is_correct:
+            marks_obtained += 1
+        g = GradeResult(
+            topic=q.topic, subject=q.subject, score=score, answered=bool(ans),
+            correct=[ans] if is_correct else [],
+            missing=[f"Correct Option: {q.correct_option}"] if not is_correct else [],
+            misconception="" if is_correct else f"Selected: {ans if ans else 'None (Skipped)'}. Correct was Option {q.correct_option}.",
+            next_step=q.explanation if not is_correct else "Concept well understood! Continue spaced practice.",
+            model_answer=f"Option {q.correct_option}: {q.explanation}",
+            source="MCQ Key"
+        )
+        grades.append(g)
+
+        if q.topic in orch.state.topics:
+            t = orch.state.topics[q.topic]
+            before = t.mastery
+            if is_correct:
+                t.mastery = min(0.98, t.mastery + 0.15)
+            else:
+                t.mastery = max(0.05, t.mastery - 0.12)
+            from datetime import datetime
+            orch.state.logs.append(PerformanceLog(
+                ts=datetime.now().strftime("%Y-%m-%d %H:%M"),
+                topic=q.topic, subject=q.subject, score=score,
+                mastery_before=before, mastery_after=t.mastery
+            ))
+
+    orch.state.last_grades = grades
+    orch.state.quiz_graded = True
+
+    pct = (marks_obtained / total_marks) * 100 if total_marks > 0 else 0
+    if pct >= 90:
+        grade_badge = "<span class='grade-badge grade-a'>🏆 Grade A+ • Outstanding Mastery</span>"
+    elif pct >= 75:
+        grade_badge = "<span class='grade-badge grade-a'>🌟 Grade A • Strong Competence</span>"
+    elif pct >= 50:
+        grade_badge = "<span class='grade-badge grade-b'>📈 Grade B • Good Progress / Review Needed</span>"
+    else:
+        grade_badge = "<span class='grade-badge grade-d'>⚠️ Grade C • Needs Focused Review</span>"
+
+    scorecard_html = f"""
+<div class='quiz-scorecard'>
+  <div class='scorecard-header'>
+    <div class='scorecard-title-group'>
+      <div class='scorecard-badge'>ASSESSMENT RESULT &bull; MARKS BREAKDOWN</div>
+      <div class='scorecard-marks'>{marks_obtained} / {total_marks} Marks ({pct:.1f}%)</div>
+    </div>
+    {grade_badge}
+  </div>
+  <div class='scorecard-stats-grid'>
+    <div class='stat-tile'>
+      <span class='stat-label'>Total Questions</span>
+      <span class='stat-val'>{total_marks}</span>
+    </div>
+    <div class='stat-tile'>
+      <span class='stat-label'>Correct Answers</span>
+      <span class='stat-val text-green'>{marks_obtained}</span>
+    </div>
+    <div class='stat-tile'>
+      <span class='stat-label'>Incorrect</span>
+      <span class='stat-val text-red'>{total_marks - marks_obtained}</span>
+    </div>
+    <div class='stat-tile'>
+      <span class='stat-label'>Overall Accuracy</span>
+      <span class='stat-val text-cyan'>{pct:.1f}%</span>
+    </div>
+  </div>
+</div>
+"""
+    review_lines = [scorecard_html, "### 📋 Question-by-Question Diagnostic Review:"]
+    for i, (q, g) in enumerate(zip(qs, grades), 1):
+        ans = str(answers[i-1]).strip() if i-1 < len(answers) and answers[i-1] else "None (Skipped)"
+        status_tag = "✅ **Correct (+1 Mark)**" if g.score > 0 else "❌ **Incorrect (0 Marks)**"
+        review_lines.append(f"""
+---
+#### Q{i}: [{q.subject} • {q.topic}] &mdash; {status_tag}
+**Question:** {q.question}
+- **Your Selected Answer:** `{ans}`
+- **Correct Option:** `Option {q.correct_option}`
+- **Pedagogical Explanation:** {q.explanation}
+""")
+
+    return (orch, "\n".join(review_lines), *view(orch))
 
 
 def refresh_trace(orch):
@@ -3598,16 +4236,41 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
             # -----------------------------------------------------------------
             with gr.Column(visible=False) as quiz_view:
                 gr.HTML("""
-                <div class='dash-main-title'>⚡ Cognitive Quiz Arena</div>
+                <div class='dash-main-title'>⚡ Cognitive Quiz Arena (Multiple Choice Format)</div>
                 """)
                 with gr.Row():
                     with gr.Column(scale=3):
+                        with gr.Row(elem_classes=["quiz-subject-header-row"]):
+                            q_subject = gr.Radio(
+                                choices=["🌐 All Subjects", "📊 Maths (P&S)", "💻 C++ (DSA)", "🧠 FAI", "🗄️ ADBMS"],
+                                value="🌐 All Subjects",
+                                label="🎯 Select Subject to Test:",
+                                elem_classes=["quiz-subject-radio"]
+                            )
+                        with gr.Row(elem_classes=["quiz-quick-action-row"]):
+                            btn_q_all = gr.Button("🌐 All Subjects", size="sm", elem_classes=["quiz-pill-btn"])
+                            btn_q_maths = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["quiz-pill-btn"])
+                            btn_q_cpp = gr.Button("💻 C++ (DSA)", size="sm", elem_classes=["quiz-pill-btn"])
+                            btn_q_fai = gr.Button("🧠 FAI", size="sm", elem_classes=["quiz-pill-btn"])
+                            btn_q_adbms = gr.Button("🗄️ ADBMS", size="sm", elem_classes=["quiz-pill-btn"])
                         with gr.Row():
-                            q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions")
-                            q_btn = gr.Button("🎯 Generate Targeted Quiz on Selected Topics", variant="primary")
-                        quiz_md = gr.Markdown("_Generate a quiz to begin assessment._")
-                        ans_boxes = [gr.Textbox(lines=3, visible=False, label=f"Your answer to Q{i + 1}") for i in range(6)]
-                        submit_btn = gr.Button("📤 Submit Answers for Cognitive Grading", variant="primary")
+                            q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions", scale=1)
+                            q_btn = gr.Button("🎯 Generate Targeted MCQ Quiz", variant="primary", scale=2)
+
+                        quiz_status_md = gr.Markdown("_Select a subject above or click a button to generate multiple-choice questions from your active syllabus._")
+                        
+                        # 6 Multiple Choice Radio groups
+                        q_radios = [
+                            gr.Radio(
+                                choices=[],
+                                visible=False,
+                                label=f"Question {i + 1}",
+                                interactive=True,
+                                elem_classes=["mcq-card-radio"]
+                            ) for i in range(6)
+                        ]
+                        
+                        submit_btn = gr.Button("📤 Submit Answers & Compute Marks", variant="primary")
                         feedback_md = gr.Markdown()
                     with gr.Column(scale=2):
                         analytics_html = gr.HTML(EMPTY)
@@ -3646,8 +4309,25 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     adapt_btn.click(do_adapt, [orch_state, a_missed, a_fatigue, a_hours, a_note], [orch_state, adapt_msg, *VIEW])
     done_btn.click(do_complete, [orch_state], [orch_state, adapt_msg, *VIEW])
     horizon.change(set_horizon, [orch_state, horizon], [orch_state, table_md])
-    q_btn.click(make_quiz, [orch_state, q_n], [orch_state, quiz_md, *ans_boxes, feedback_md, *VIEW])
-    submit_btn.click(submit_quiz, [orch_state, *ans_boxes], [orch_state, feedback_md, *VIEW])
+    quiz_inputs = [orch_state, q_n, q_subject, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms]
+    quiz_outputs = [orch_state, quiz_status_md, *q_radios, feedback_md, *VIEW]
+
+    q_btn.click(make_quiz, quiz_inputs, quiz_outputs)
+
+    # Quick action subject buttons
+    def _gen_for(subj_name):
+        def _wrapper(orch, n, c_ps, c_dsa, c_ai, c_dbms):
+            res = make_quiz(orch, n, subj_name, c_ps, c_dsa, c_ai, c_dbms)
+            return (subj_name, *res)
+        return _wrapper
+
+    btn_q_all.click(_gen_for("🌐 All Subjects"), [orch_state, q_n, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms], [q_subject, *quiz_outputs])
+    btn_q_maths.click(_gen_for("📊 Maths (P&S)"), [orch_state, q_n, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms], [q_subject, *quiz_outputs])
+    btn_q_cpp.click(_gen_for("💻 C++ (DSA)"), [orch_state, q_n, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms], [q_subject, *quiz_outputs])
+    btn_q_fai.click(_gen_for("🧠 FAI"), [orch_state, q_n, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms], [q_subject, *quiz_outputs])
+    btn_q_adbms.click(_gen_for("🗄️ ADBMS"), [orch_state, q_n, c_mods_ps, c_mods_dsa, c_mods_ai, c_mods_dbms], [q_subject, *quiz_outputs])
+
+    submit_btn.click(submit_quiz, [orch_state, *q_radios], [orch_state, feedback_md, *VIEW])
 
 if __name__ == "__main__":
     import os
