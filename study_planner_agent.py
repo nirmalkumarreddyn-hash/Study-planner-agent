@@ -2656,11 +2656,10 @@ button.secondary, button[variant="secondary"] {
   background: #121826 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
-  padding: 18px 20px !important;
-  height: 520px !important;
-  max-height: 520px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  padding: 16px 18px !important;
+  height: auto !important;
+  min-height: 540px !important;
+  overflow: visible !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -2668,13 +2667,49 @@ button.secondary, button[variant="secondary"] {
   background: rgba(15, 23, 42, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 12px !important;
-  padding: 12px 14px !important;
-  margin-bottom: 12px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 10px !important;
   transition: all 0.2s ease !important;
 }
 
 .subject-item-box:hover {
-  border-color: rgba(56, 189, 248, 0.25) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.08) !important;
+}
+
+.subject-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 4px !important;
+}
+
+.syl-switch-btn {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  line-height: 1 !important;
+}
+
+.syl-switch-btn:hover {
+  background: rgba(56, 189, 248, 0.25) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+.subject-controls-row {
+  display: flex !important;
+  gap: 10px !important;
 }
 
 .schedule-card {
@@ -2682,10 +2717,8 @@ button.secondary, button[variant="secondary"] {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
   padding: 18px 20px !important;
-  height: 520px !important;
-  max-height: 520px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  height: auto !important;
+  overflow: visible !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -2703,52 +2736,142 @@ button.secondary, button[variant="secondary"] {
 }
 
 /* Custom Clean Scrollbar */
-.portfolio-group-card::-webkit-scrollbar,
-.schedule-card::-webkit-scrollbar,
+.module-checkboxes-viewer::-webkit-scrollbar,
 .module-checkboxes::-webkit-scrollbar {
-  width: 6px !important;
+  width: 5px !important;
 }
 
-.portfolio-group-card::-webkit-scrollbar-track,
-.schedule-card::-webkit-scrollbar-track,
+.module-checkboxes-viewer::-webkit-scrollbar-track,
 .module-checkboxes::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.5) !important;
   border-radius: 4px !important;
 }
 
-.portfolio-group-card::-webkit-scrollbar-thumb,
-.schedule-card::-webkit-scrollbar-thumb,
+.module-checkboxes-viewer::-webkit-scrollbar-thumb,
 .module-checkboxes::-webkit-scrollbar-thumb {
   background: #334155 !important;
   border-radius: 4px !important;
 }
 
-.portfolio-group-card::-webkit-scrollbar-thumb:hover,
-.schedule-card::-webkit-scrollbar-thumb:hover,
+.module-checkboxes-viewer::-webkit-scrollbar-thumb:hover,
 .module-checkboxes::-webkit-scrollbar-thumb:hover {
   background: #475569 !important;
 }
 
-/* Module Selection Accordion & Checkboxes */
-.module-accordion {
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 8px !important;
-  background: rgba(13, 19, 34, 0.7) !important;
-  margin-top: 8px !important;
+/* Syllabus Viewer Card (Beside Subject Management) */
+.syllabus-panel-col {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
-.module-checkboxes {
-  background: transparent !important;
-  padding: 6px 8px !important;
-  max-height: 140px !important;
+.syllabus-viewer-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 16px 18px !important;
+  height: auto !important;
+  min-height: 540px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.syl-tab-pills {
+  display: flex !important;
+  gap: 6px !important;
+  margin-bottom: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.syl-pill-btn {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+  height: 28px !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.syl-pill-btn:hover {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+}
+
+.syl-active-banner {
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 10px !important;
+}
+
+.syl-title-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 4px !important;
+}
+
+.syl-subject-name {
+  color: #38bdf8 !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+}
+
+.syl-tag {
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: #7dd3fc !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+
+.syl-desc {
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.module-checkboxes-viewer {
+  max-height: 380px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  padding-right: 6px !important;
 }
 
-.module-checkboxes label {
-  font-size: 0.8rem !important;
-  color: #cbd5e1 !important;
-  padding: 2px 0 !important;
+.module-checkboxes-viewer label {
+  background: rgba(15, 23, 42, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 8px !important;
+  padding: 7px 10px !important;
+  margin-bottom: 5px !important;
+  transition: all 0.15s ease !important;
+  font-size: 11.5px !important;
+  color: #e2e8f0 !important;
+}
+
+.module-checkboxes-viewer label:hover {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  background: rgba(30, 41, 59, 0.6) !important;
+}
+
+.roadmap-schedule-overview-row {
+  margin-bottom: 20px !important;
+}
+
+.roadmap-schedule-overview-row .schedule-card {
+  height: auto !important;
+  max-height: none !important;
+  max-width: 480px !important;
+  margin: 0 auto !important;
 }
 
 /* Primary Build Plan Button from Image 2 */
@@ -3236,43 +3359,138 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                 <div class='dash-main-title'>Plan Setup and Diagnostics</div>
                 """)
 
-                # TOP ROW: Subject Management (Left) + Schedule Overview (Right)
+                # TOP ROW: Subject Management (Left) + Subject Syllabus Viewer (Right)
                 with gr.Row(elem_classes=["top-cards-row"]):
                     # Top-Left Card: Subject Management
                     with gr.Column(scale=11, elem_classes=["subject-portfolio-col"]):
                         with gr.Group(elem_classes=["portfolio-group-card"]):
                             gr.HTML("""
                             <div class='card-header-bar'>
-                                <div class='card-header-title'>Subject Management <span class='info-icon' title='Select subjects, customize confidence, quiz score and click Syllabus to view/select modules'>ⓘ</span></div>
+                                <div class='card-header-title'>Subject Management <span class='info-icon' title='Select subjects, customize weight/confidence/score and click Syllabus to view/select modules'>ⓘ</span></div>
                                 <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
                                     <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
                                     <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
                                 </svg>
                             </div>
                             """)
-                            subject_inputs: List[Any] = []
+                            sub_components = {}
+                            syl_btns = {}
                             for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
                                 with gr.Group(elem_classes=["subject-item-box"]):
-                                    with gr.Row():
+                                    with gr.Row(elem_classes=["subject-header-row"]):
                                         c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
-                                        c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
-                                    with gr.Row():
+                                        syl_btn = gr.Button("📖 Syllabus", size="sm", elem_classes=["syl-switch-btn"], scale=1)
+                                    with gr.Row(elem_classes=["subject-controls-row"]):
+                                        c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=1)
                                         c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
                                         c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
-                                    # Dedicated prominent button for syllabus
-                                    with gr.Accordion(f"📖 View Syllabus & Modules for {sname} ({len(CURRICULUM[sname])} Available) ▾", open=False, elem_classes=["syllabus-accordion-btn"]):
-                                        gr.Markdown(f"**Curriculum Syllabus for {sname}:** Select the modules you want to study:")
-                                        c_mods = gr.CheckboxGroup(
-                                            choices=list(CURRICULUM[sname].keys()),
-                                            value=list(CURRICULUM[sname].keys()),
-                                            label=f"Syllabus Modules for {sname} (All 10 Included by Default):",
-                                            elem_classes=["module-checkboxes"]
-                                        )
-                                subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
+                                sub_components[sname] = (c_inc, c_conf, c_score, c_wt)
+                                syl_btns[sname] = syl_btn
 
-                    # Top-Right Card: Schedule Overview Live Calendar
-                    with gr.Column(scale=9, elem_classes=["schedule-overview-col"]):
-                        schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
+                    # Top-Right Card: Subject Syllabus & Curriculum Explorer
+                    with gr.Column(scale=9, elem_classes=["syllabus-panel-col"]):
+                        with gr.Group(elem_classes=["syllabus-viewer-card"]):
+                            gr.HTML("""
+                            <div class='card-header-bar'>
+                                <div class='card-header-title'>Subject Syllabus &amp; Modules <span class='info-icon' title='Syllabus & modules for selected subject. Check/uncheck modules to customize study plan & quizzes.'>ⓘ</span></div>
+                                <div class='syllabus-badge'>Curriculum Explorer</div>
+                            </div>
+                            """)
+                            with gr.Row(elem_classes=["syl-tab-pills"]):
+                                pill_ps = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["syl-pill-btn"])
+                                pill_dsa = gr.Button("💻 DSA C++", size="sm", elem_classes=["syl-pill-btn"])
+                                pill_ai = gr.Button("🧠 AI", size="sm", elem_classes=["syl-pill-btn"])
+                                pill_dbms = gr.Button("🗄️ DBMS", size="sm", elem_classes=["syl-pill-btn"])
+
+                            syl_boxes = []
+                            c_mods_dict = {}
+
+                            # 1. Probability and Statistics (Maths - Default visible)
+                            with gr.Column(visible=True, elem_classes=["syl-content-box"]) as box_ps:
+                                gr.HTML("""
+                                <div class='syl-active-banner'>
+                                    <div class='syl-title-row'>
+                                        <span class='syl-subject-name'>📊 Probability and Statistics Syllabus (Maths)</span>
+                                        <span class='syl-tag'>10 Core Modules</span>
+                                    </div>
+                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                                </div>
+                                """)
+                                c_mods_ps = gr.CheckboxGroup(
+                                    choices=list(CURRICULUM["Probability and Statistics"].keys()),
+                                    value=list(CURRICULUM["Probability and Statistics"].keys()),
+                                    label="Select Modules for Study Plan & Quizzes:",
+                                    elem_classes=["module-checkboxes-viewer"]
+                                )
+                                c_mods_dict["Probability and Statistics"] = c_mods_ps
+                            syl_boxes.append(box_ps)
+
+                            # 2. DSA C++ (Hidden by default)
+                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dsa:
+                                gr.HTML("""
+                                <div class='syl-active-banner'>
+                                    <div class='syl-title-row'>
+                                        <span class='syl-subject-name'>💻 Data Structures &amp; Algorithms (DSA C++) Syllabus</span>
+                                        <span class='syl-tag'>10 Core Modules</span>
+                                    </div>
+                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                                </div>
+                                """)
+                                c_mods_dsa = gr.CheckboxGroup(
+                                    choices=list(CURRICULUM["DSA C++"].keys()),
+                                    value=list(CURRICULUM["DSA C++"].keys()),
+                                    label="Select Modules for Study Plan & Quizzes:",
+                                    elem_classes=["module-checkboxes-viewer"]
+                                )
+                                c_mods_dict["DSA C++"] = c_mods_dsa
+                            syl_boxes.append(box_dsa)
+
+                            # 3. Fundamentals of Artificial Intelligence (Hidden by default)
+                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_ai:
+                                gr.HTML("""
+                                <div class='syl-active-banner'>
+                                    <div class='syl-title-row'>
+                                        <span class='syl-subject-name'>🧠 Fundamentals of Artificial Intelligence Syllabus</span>
+                                        <span class='syl-tag'>10 Core Modules</span>
+                                    </div>
+                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                                </div>
+                                """)
+                                c_mods_ai = gr.CheckboxGroup(
+                                    choices=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
+                                    value=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
+                                    label="Select Modules for Study Plan & Quizzes:",
+                                    elem_classes=["module-checkboxes-viewer"]
+                                )
+                                c_mods_dict["Fundamentals of Artificial Intelligence"] = c_mods_ai
+                            syl_boxes.append(box_ai)
+
+                            # 4. Advanced DBMS (Hidden by default)
+                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dbms:
+                                gr.HTML("""
+                                <div class='syl-active-banner'>
+                                    <div class='syl-title-row'>
+                                        <span class='syl-subject-name'>🗄️ Advanced DBMS Syllabus</span>
+                                        <span class='syl-tag'>10 Core Modules</span>
+                                    </div>
+                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                                </div>
+                                """)
+                                c_mods_dbms = gr.CheckboxGroup(
+                                    choices=list(CURRICULUM["Advanced DBMS"].keys()),
+                                    value=list(CURRICULUM["Advanced DBMS"].keys()),
+                                    label="Select Modules for Study Plan & Quizzes:",
+                                    elem_classes=["module-checkboxes-viewer"]
+                                )
+                                c_mods_dict["Advanced DBMS"] = c_mods_dbms
+                            syl_boxes.append(box_dbms)
+
+                            # Assemble subject_inputs for build_plan in exact signature: [inc, conf, score, wt, chosen_mods]
+                            subject_inputs: List[Any] = []
+                            for sname in DEMO_DEFAULTS.keys():
+                                c_inc, c_conf, c_score, c_wt = sub_components[sname]
+                                c_mods = c_mods_dict[sname]
+                                subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
 
                 # BOTTOM ROW: Performance Snapshot (spans full width under Subject Management & Schedule Overview)
                 with gr.Row(elem_classes=["snapshot-row"]):
@@ -3357,6 +3575,9 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                 gr.HTML("""
                 <div class='dash-main-title'>📅 Adaptive Schedule &amp; Roadmap</div>
                 """)
+                with gr.Row(elem_classes=["roadmap-schedule-overview-row"]):
+                    with gr.Column(scale=1):
+                        schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
                 summary_html = gr.HTML(EMPTY)
                 with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
                     with gr.Row():
@@ -3400,6 +3621,20 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
         )
 
     nav_choice.change(switch_nav_view, [nav_choice], [setup_view, roadmap_view, quiz_view])
+
+    # Wire Syllabus Switcher Buttons
+    def _show_syl_box(active_idx: int):
+        return [gr.update(visible=(i == active_idx)) for i in range(4)]
+
+    syl_btns["Probability and Statistics"].click(lambda: _show_syl_box(0), None, syl_boxes)
+    syl_btns["DSA C++"].click(lambda: _show_syl_box(1), None, syl_boxes)
+    syl_btns["Fundamentals of Artificial Intelligence"].click(lambda: _show_syl_box(2), None, syl_boxes)
+    syl_btns["Advanced DBMS"].click(lambda: _show_syl_box(3), None, syl_boxes)
+
+    pill_ps.click(lambda: _show_syl_box(0), None, syl_boxes)
+    pill_dsa.click(lambda: _show_syl_box(1), None, syl_boxes)
+    pill_ai.click(lambda: _show_syl_box(2), None, syl_boxes)
+    pill_dbms.click(lambda: _show_syl_box(3), None, syl_boxes)
 
     VIEW = [timeline_html, table_md, summary_html, analytics_html]
     build_btn.click(
