@@ -2612,6 +2612,163 @@ button.secondary, button[variant="secondary"] {
 @media(max-width: 992px) {
   .snapshot-charts-row { grid-template-columns: 1fr !important; }
 }
+
+/* ========================================================================== */
+/* Dashboard Master Alignment & Layout Styles (Matching Image 1 & Image 2)    */
+/* ========================================================================== */
+.dash-main-container {
+  gap: 20px !important;
+  align-items: flex-start !important;
+  margin-top: 10px !important;
+}
+
+.left-diag-column {
+  min-width: 300px !important;
+}
+
+.diagnostics-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.dash-main-title {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.top-cards-row {
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+
+.portfolio-group-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 18px 20px !important;
+  height: 520px !important;
+  max-height: 520px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.subject-item-box {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.subject-item-box:hover {
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+.schedule-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 18px 20px !important;
+  height: 520px !important;
+  max-height: 520px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.snapshot-row {
+  margin-top: 16px !important;
+}
+
+.snapshot-card {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 16px 22px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  width: 100% !important;
+}
+
+/* Custom Clean Scrollbar */
+.portfolio-group-card::-webkit-scrollbar,
+.schedule-card::-webkit-scrollbar,
+.module-checkboxes::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.portfolio-group-card::-webkit-scrollbar-track,
+.schedule-card::-webkit-scrollbar-track,
+.module-checkboxes::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5) !important;
+  border-radius: 4px !important;
+}
+
+.portfolio-group-card::-webkit-scrollbar-thumb,
+.schedule-card::-webkit-scrollbar-thumb,
+.module-checkboxes::-webkit-scrollbar-thumb {
+  background: #334155 !important;
+  border-radius: 4px !important;
+}
+
+.portfolio-group-card::-webkit-scrollbar-thumb:hover,
+.schedule-card::-webkit-scrollbar-thumb:hover,
+.module-checkboxes::-webkit-scrollbar-thumb:hover {
+  background: #475569 !important;
+}
+
+/* Module Selection Accordion & Checkboxes */
+.module-accordion {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(13, 19, 34, 0.7) !important;
+  margin-top: 8px !important;
+}
+
+.module-checkboxes {
+  background: transparent !important;
+  padding: 6px 8px !important;
+  max-height: 140px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.module-checkboxes label {
+  font-size: 0.8rem !important;
+  color: #cbd5e1 !important;
+  padding: 2px 0 !important;
+}
+
+/* Primary Build Plan Button from Image 2 */
+.build-plan-button button {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 1.05rem !important;
+  border-radius: 12px !important;
+  padding: 12px 20px !important;
+  border: none !important;
+  box-shadow: 0 4px 18px rgba(14, 165, 233, 0.45) !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+  margin-top: 10px !important;
+}
+
+.build-plan-button button:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%) !important;
+  box-shadow: 0 6px 22px rgba(14, 165, 233, 0.6) !important;
+  transform: translateY(-1px) !important;
+}
 """
 
 THEME = gr.themes.Base(  # type: ignore
