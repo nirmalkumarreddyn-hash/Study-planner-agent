@@ -336,6 +336,7 @@ class StudentProfile(BaseModel):
     hours_per_day: float = Field(default=2.0, gt=0, le=14)
     start_hour: int = Field(default=17, ge=0, le=23)
     subjects: List[SubjectInput]
+    uploaded_syllabus: str = ""
 
 
 class TopicState(BaseModel):
@@ -445,6 +446,7 @@ class AppState(BaseModel):
     fragile: List[str] = Field(default_factory=list)
     insight: str = ""
     baseline_mastery: float = 0.0
+    uploaded_syllabus: str = ""
 
 
 def add_trace(state: AppState, agent: str, kind: str, text: str) -> None:
@@ -2769,6 +2771,96 @@ button.secondary, button[variant="secondary"] {
   box-shadow: 0 6px 22px rgba(14, 165, 233, 0.6) !important;
   transform: translateY(-1px) !important;
 }
+
+/* ========================================================================== */
+/* Sidebar Navigation & Layout (Matching Reference Image 1)                   */
+/* ========================================================================== */
+.sidebar-nav-container {
+  background: #121826 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.sidebar-nav-title {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #64748b !important;
+  margin-bottom: 10px !important;
+}
+
+.sidebar-nav-radio .wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.sidebar-nav-radio label {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-weight: 700 !important;
+  font-size: 0.92rem !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-nav-radio label:hover {
+  color: #f8fafc !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+}
+
+.sidebar-nav-radio label.selected,
+.sidebar-nav-radio label:has(input:checked) {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3) !important;
+}
+
+/* Syllabus Button & Accordion */
+.syllabus-accordion-btn {
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 10px !important;
+  background: rgba(14, 165, 233, 0.08) !important;
+  margin-top: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+.syllabus-accordion-btn:hover {
+  border-color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.14) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+}
+
+.syllabus-accordion-btn > .label-wrap {
+  cursor: pointer !important;
+  padding: 8px 12px !important;
+}
+
+.syllabus-accordion-btn > .label-wrap span {
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  color: #38bdf8 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.file-upload-box {
+  background: #0f172a !important;
+  border: 1px dashed rgba(56, 189, 248, 0.35) !important;
+  border-radius: 10px !important;
+  margin-top: 10px !important;
+  padding: 6px !important;
+}
 """
 
 THEME = gr.themes.Base(  # type: ignore
@@ -2809,6 +2901,27 @@ def _need_plan(o: Optional[Orchestrator]) -> bool:
 
 
 import calendar
+
+
+def extract_file_text(file_obj: Any) -> str:
+    if file_obj is None:
+        return ""
+    filepath = file_obj if isinstance(file_obj, str) else getattr(file_obj, "name", None)
+    if not filepath or not os.path.exists(filepath):
+        return ""
+    try:
+        if filepath.lower().endswith(".pdf"):
+            try:
+                import pypdf  # type: ignore
+                reader = pypdf.PdfReader(filepath)
+                text = " ".join(page.extract_text() or "" for page in reader.pages)
+                return text[:4000].strip()
+            except Exception:
+                pass
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()[:4000].strip()
+    except Exception:
+        return ""
 
 def render_mini_calendar(exam_str: str = "Nov 01, 2026") -> str:
     today = date.today()
@@ -2948,7 +3061,7 @@ def render_mini_calendar(exam_str: str = "Nov 01, 2026") -> str:
     </div>
     """
 
-def build_plan(orch, name, exam_str, target, hours, start_hour, *rows):
+def build_plan(orch, name, exam_str, target, hours, start_hour, uploaded_file, *rows):
     try:
         LLM.refresh()
         exam = parse_exam_date(str(exam_str).strip())
@@ -2965,10 +3078,13 @@ def build_plan(orch, name, exam_str, target, hours, start_hour, *rows):
                 subs.append(SubjectInput(name=sname, confidence=int(conf), quiz_score=float(score), exam_weight=int(wt), selected_modules=selected))
         if not subs:
             raise ValueError("Select at least one subject to study.")
+        syl_text = extract_file_text(uploaded_file)
         prof = StudentProfile(name=(name or "Alex").strip(), exam_date=exam, target_score=int(target),
-                               hours_per_day=float(hours), start_hour=int(start_hour), subjects=subs)
+                               hours_per_day=float(hours), start_hour=int(start_hour), subjects=subs,
+                               uploaded_syllabus=syl_text)
         o = Orchestrator()
         o.onboard(prof)
+        o.state.uploaded_syllabus = syl_text
         mode = f"OpenAI {LLM.MODEL}" if LLM.live else "offline rule engine"
         msg = f"**Plan v1 is ready** for {len(o.state.topics)} topics across {len(subs)} subjects over {days} days (engine: {mode}). Open the **Schedule & Roadmap** tab."
         return (o, msg, render_diag(o.state), *view(o))
@@ -3022,7 +3138,7 @@ def refresh_trace(orch):
 with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     orch_state = gr.State(None)
 
-    # Hero Banner exactly matching Image with Title, 3 Crests & 4 Badges (Zero Watermarks)
+    # Hero Banner exactly matching Image 1 with Title, 3 Crests & 4 Badges (Zero Watermarks, No floating text)
     gr.HTML("""
     <div class='hero-image2'>
       <div class='hero-title-group'>
@@ -3039,26 +3155,19 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
 
         <!-- Center Master Emblem: Laurel + Lightning + Books -->
         <svg width="74" height="74" viewBox="0 0 100 100" fill="none">
-          <!-- Left laurel (cyan) -->
           <path d="M28 72C22 62 20 48 24 35C25 32 28 34 27 37C24 48 26 58 31 66C32 68 30 71 28 72Z" fill="#38bdf8"/>
           <path d="M23 42C17 40 14 34 16 28C18 34 23 37 25 38C26 39 25 41 23 42Z" fill="#38bdf8"/>
           <path d="M20 54C14 53 12 47 14 41C16 47 21 49 23 50C23 52 22 53 20 54Z" fill="#38bdf8"/>
           <path d="M21 66C16 65 14 60 16 54C18 59 23 61 24 62C24 64 23 65 21 66Z" fill="#38bdf8"/>
           <path d="M27 30C23 27 22 21 26 16C26 22 30 25 32 26C31 28 29 29 27 30Z" fill="#38bdf8"/>
           <path d="M35 22C32 18 33 12 38 8C37 14 40 18 41 20C40 21 37 22 35 22Z" fill="#38bdf8"/>
-
-          <!-- Right laurel (copper) -->
           <path d="M72 72C78 62 80 48 76 35C75 32 72 34 73 37C76 48 74 58 69 66C68 68 70 71 72 72Z" fill="#fb923c"/>
           <path d="M77 42C83 40 86 34 84 28C82 34 77 37 75 38C74 39 75 41 77 42Z" fill="#fb923c"/>
           <path d="M80 54C86 53 88 47 86 41C84 47 79 49 77 50C77 52 78 53 80 54Z" fill="#fb923c"/>
           <path d="M79 66C84 65 86 60 84 54C82 59 77 61 76 62C76 64 77 65 79 66Z" fill="#fb923c"/>
           <path d="M73 30C77 27 78 21 74 16C74 22 70 25 68 26C69 28 71 29 73 30Z" fill="#fb923c"/>
           <path d="M65 22C68 18 67 12 62 8C63 14 60 18 59 20C60 21 63 22 65 22Z" fill="#fb923c"/>
-
-          <!-- Central Lightning Bolt -->
           <path d="M52 14L37 42H50L45 62L65 34H51L56 14H52Z" fill="#e0f2fe" filter="drop-shadow(0 0 6px rgba(56,189,248,0.5))"/>
-
-          <!-- Stacked Books Beneath -->
           <path d="M38 68L49 64L62 68L51 72L38 68Z" fill="#e0f2fe"/>
           <path d="M36 74L49 70L64 74L51 78L36 74Z" fill="#38bdf8"/>
           <path d="M34 80L49 76L66 80L51 84L34 80Z" fill="#fb923c"/>
@@ -3080,201 +3189,230 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     </div>
     """)
 
-    with gr.Tabs():
-        with gr.Tab("⚙️ Setup & Diagnostics"):
-            # BALANCED TWO-COLUMN DASHBOARD LAYOUT (Matching Reference Design)
-            with gr.Row(elem_classes=["dash-main-container"]):
-                # ==========================================
-                # LEFT COLUMN: Portfolio & Plan Diagnostics (~28% width)
-                # ==========================================
-                with gr.Column(scale=3, min_width=290, elem_classes=["left-diag-column"]):
-                    with gr.Group(elem_classes=["diagnostics-card"]):
-                        gr.HTML("""
-                        <div class='card-header-bar'>
-                            <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
-                            <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
-                                <path d='M0 20C20 20 35 10 55 14C75 18 85 4 100 2' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round'/>
-                            </svg>
-                        </div>
-                        """)
-                        s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
-                        s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
-                        s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
-                        s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
-                        s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
-                        build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg", elem_classes=["build-plan-button"])
-                        build_status = gr.Markdown()
+    # MAIN MASTER CONTAINER: Left Sidebar + Right Dynamic Main View
+    with gr.Row(elem_classes=["dash-main-container"]):
+        # =====================================================================
+        # LEFT COLUMN: Sidebar Navigation + Diagnostics Inputs (~28% width)
+        # =====================================================================
+        with gr.Column(scale=3, min_width=290, elem_classes=["left-diag-column"]):
+            # 1. Sidebar Navigation Menu matching Image 1
+            with gr.Group(elem_classes=["sidebar-nav-container"]):
+                gr.HTML("<div class='sidebar-nav-title'>Navigation Menu</div>")
+                nav_choice = gr.Radio(
+                    choices=["⚙️ Setup & Diagnostics", "📅 Schedule & Roadmap", "⚡ Quiz Arena"],
+                    value="⚙️ Setup & Diagnostics",
+                    show_label=False,
+                    elem_classes=["sidebar-nav-radio"]
+                )
 
-                # ==========================================
-                # RIGHT COLUMN: Main Setup & Diagnostics Area (~72% width)
-                # ==========================================
-                with gr.Column(scale=7, elem_classes=["right-main-column"]):
-                    gr.HTML("""
-                    <div class='dash-main-title'>Portfolio &amp; Plan Setup and Diagnostics</div>
-                    """)
+            # 2. Portfolio & Plan Diagnostics Card (Student Profile, Exam Date, Sliders, File Upload, Build Button)
+            with gr.Group(elem_classes=["diagnostics-card"]):
+                gr.HTML("""
+                <div class='card-header-bar'>
+                    <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
+                    <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                        <path d='M0 20C20 20 35 10 55 14C75 18 85 4 100 2' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round'/>
+                    </svg>
+                </div>
+                """)
+                s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
+                s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
+                s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
+                s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
+                s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
+                s_file = gr.File(label="📄 Upload Syllabus / Notes (Optional)", file_types=[".txt", ".pdf", ".md", ".json", ".docx"], file_count="single", elem_classes=["file-upload-box"])
+                build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg", elem_classes=["build-plan-button"])
+                build_status = gr.Markdown()
 
-                    # TOP ROW: Subject Portfolio (Left) + Schedule Overview (Right)
-                    with gr.Row(elem_classes=["top-cards-row"]):
-                        # Top-Left: Subject Portfolio
-                        with gr.Column(scale=11, elem_classes=["subject-portfolio-col"]):
-                            with gr.Group(elem_classes=["portfolio-group-card"]):
-                                gr.HTML("""
-                                <div class='card-header-bar'>
-                                    <div class='card-header-title'>Subject Portfolio <span class='info-icon' title='Select subjects, customize confidence, quiz score and target modules'>ⓘ</span></div>
-                                    <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
-                                        <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
-                                        <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
-                                    </svg>
-                                </div>
-                                """)
-                                subject_inputs: List[Any] = []
-                                for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
-                                    with gr.Group(elem_classes=["subject-item-box"]):
-                                        with gr.Row():
-                                            c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
-                                            c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
-                                        with gr.Row():
-                                            c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
-                                            c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
-                                        with gr.Accordion(f"📂 Select Modules for {sname} ({len(CURRICULUM[sname])} Available)", open=False, elem_classes=["module-accordion"]):
-                                            c_mods = gr.CheckboxGroup(
-                                                choices=list(CURRICULUM[sname].keys()),
-                                                value=list(CURRICULUM[sname].keys()),
-                                                label=f"Pick modules for {sname}:",
-                                                elem_classes=["module-checkboxes"]
-                                            )
-                                    subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
+        # =====================================================================
+        # RIGHT COLUMN: Dynamic Main Content Area (~72% width)
+        # =====================================================================
+        with gr.Column(scale=7, elem_classes=["right-main-column"]):
+            # -----------------------------------------------------------------
+            # VIEW 1: Setup & Diagnostics (Active by default)
+            # -----------------------------------------------------------------
+            with gr.Column(visible=True) as setup_view:
+                gr.HTML("""
+                <div class='dash-main-title'>Plan Setup and Diagnostics</div>
+                """)
 
-                        # Top-Right: Schedule Overview Live Calendar
-                        with gr.Column(scale=9, elem_classes=["schedule-overview-col"]):
-                            schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
-
-                    # BOTTOM ROW: Performance Snapshot (spans full width under Subject Portfolio & Schedule Overview)
-                    with gr.Row(elem_classes=["snapshot-row"]):
-                        with gr.Column(scale=1):
+                # TOP ROW: Subject Management (Left) + Schedule Overview (Right)
+                with gr.Row(elem_classes=["top-cards-row"]):
+                    # Top-Left Card: Subject Management
+                    with gr.Column(scale=11, elem_classes=["subject-portfolio-col"]):
+                        with gr.Group(elem_classes=["portfolio-group-card"]):
                             gr.HTML("""
-                            <div class='snapshot-card'>
-                              <div class='snapshot-header'>
-                                <div class='snapshot-title'>Performance Snapshot</div>
-                                <div class='snapshot-legend'>
-                                  <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
-                                  <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
-                                </div>
-                              </div>
-                              <div class='snapshot-charts-row'>
-                                <!-- Left: Smooth Blue Area Curve -->
-                                <div class='chart-col'>
-                                  <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
-                                    <defs>
-                                      <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
-                                        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
-                                    <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
-                                  </svg>
-                                </div>
-
-                                <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
-                                <div class='chart-col'>
-                                  <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
-                                    <defs>
-                                      <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
-                                        <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
-                                      </linearGradient>
-                                    </defs>
-                                    <!-- Horizontal gridlines -->
-                                    <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
-                                    <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
-                                    <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                                    <!-- Y-axis text -->
-                                    <text x="5" y="18" fill="#64748b" font-size="8">40</text>
-                                    <text x="5" y="48" fill="#64748b" font-size="8">20</text>
-                                    <text x="5" y="78" fill="#64748b" font-size="8">0</text>
-                                    <!-- Curves -->
-                                    <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
-                                    <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
-                                    <!-- X-axis labels -->
-                                    <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
-                                    <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
-                                    <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
-                                    <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
-                                    <text x="160" y="87" fill="#64748b" font-size="7">May</text>
-                                  </svg>
-                                </div>
-
-                                <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
-                                <div class='chart-col'>
-                                  <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
-                                    <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                                    <!-- Bars -->
-                                    <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
-                                    <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
-                                    <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
-                                    <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
-                                    <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
-                                    <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
-                                    <!-- Labels -->
-                                    <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
-                                    <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
-                                    <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
-                                    <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
-                                  </svg>
-                                </div>
-                              </div>
+                            <div class='card-header-bar'>
+                                <div class='card-header-title'>Subject Management <span class='info-icon' title='Select subjects, customize confidence, quiz score and click Syllabus to view/select modules'>ⓘ</span></div>
+                                <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                                    <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
+                                    <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
+                                </svg>
                             </div>
                             """)
+                            subject_inputs: List[Any] = []
+                            for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
+                                with gr.Group(elem_classes=["subject-item-box"]):
+                                    with gr.Row():
+                                        c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
+                                        c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
+                                    with gr.Row():
+                                        c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
+                                        c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
+                                    # Dedicated prominent button for syllabus
+                                    with gr.Accordion(f"📖 View Syllabus & Modules for {sname} ({len(CURRICULUM[sname])} Available) ▾", open=False, elem_classes=["syllabus-accordion-btn"]):
+                                        gr.Markdown(f"**Curriculum Syllabus for {sname}:** Select the modules you want to study:")
+                                        c_mods = gr.CheckboxGroup(
+                                            choices=list(CURRICULUM[sname].keys()),
+                                            value=list(CURRICULUM[sname].keys()),
+                                            label=f"Syllabus Modules for {sname} (All 10 Included by Default):",
+                                            elem_classes=["module-checkboxes"]
+                                        )
+                                subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
 
-            # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
-            diag_html = gr.HTML(EMPTY)
+                    # Top-Right Card: Schedule Overview Live Calendar
+                    with gr.Column(scale=9, elem_classes=["schedule-overview-col"]):
+                        schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
 
-        with gr.Tab("📅 Schedule & Roadmap"):
-            summary_html = gr.HTML(EMPTY)
-            with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
-                with gr.Row():
-                    a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
-                    a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
-                    a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
-                a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. college lab exams, caught a fever, or need more review")
-                with gr.Row():
-                    adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
-                    done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
-                adapt_msg = gr.Markdown()
-            timeline_html = gr.HTML(EMPTY)
-            horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
-            table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the first tab._")
+                # BOTTOM ROW: Performance Snapshot (spans full width under Subject Management & Schedule Overview)
+                with gr.Row(elem_classes=["snapshot-row"]):
+                    with gr.Column(scale=1):
+                        gr.HTML("""
+                        <div class='snapshot-card'>
+                          <div class='snapshot-header'>
+                            <div class='snapshot-title'>Performance Snapshot</div>
+                            <div class='snapshot-legend'>
+                              <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
+                              <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
+                            </div>
+                          </div>
+                          <div class='snapshot-charts-row'>
+                            <!-- Left: Smooth Blue Area Curve -->
+                            <div class='chart-col'>
+                              <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
+                                <defs>
+                                  <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+                                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
+                                  </linearGradient>
+                                </defs>
+                                <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
+                                <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+                              </svg>
+                            </div>
 
-        with gr.Tab("⚡ Quiz Arena"):
-            with gr.Row():
-                with gr.Column(scale=3):
+                            <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
+                            <div class='chart-col'>
+                              <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
+                                <defs>
+                                  <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
+                                    <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
+                                  </linearGradient>
+                                </defs>
+                                <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
+                                <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
+                                <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                                <text x="5" y="18" fill="#64748b" font-size="8">40</text>
+                                <text x="5" y="48" fill="#64748b" font-size="8">20</text>
+                                <text x="5" y="78" fill="#64748b" font-size="8">0</text>
+                                <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
+                                <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
+                                <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
+                                <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
+                                <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
+                                <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
+                                <text x="160" y="87" fill="#64748b" font-size="7">May</text>
+                              </svg>
+                            </div>
+
+                            <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
+                            <div class='chart-col'>
+                              <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
+                                <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                                <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
+                                <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
+                                <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
+                                <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
+                                <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
+                                <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
+                                <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
+                                <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
+                                <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
+                                <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        """)
+
+                # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
+                diag_html = gr.HTML(EMPTY)
+
+            # -----------------------------------------------------------------
+            # VIEW 2: Schedule & Roadmap
+            # -----------------------------------------------------------------
+            with gr.Column(visible=False) as roadmap_view:
+                gr.HTML("""
+                <div class='dash-main-title'>📅 Adaptive Schedule &amp; Roadmap</div>
+                """)
+                summary_html = gr.HTML(EMPTY)
+                with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
                     with gr.Row():
-                        q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions")
-                        q_btn = gr.Button("🎯 Generate Targeted Quiz on Weakest Topics", variant="primary")
-                    quiz_md = gr.Markdown("_Generate a quiz to begin assessment._")
-                    ans_boxes = [gr.Textbox(lines=3, visible=False, label=f"Your answer to Q{i + 1}") for i in range(6)]
-                    submit_btn = gr.Button("📤 Submit Answers for Cognitive Grading", variant="primary")
-                    feedback_md = gr.Markdown()
-                with gr.Column(scale=2):
-                    analytics_html = gr.HTML(EMPTY)
+                        a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
+                        a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
+                        a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
+                    a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. college lab exams, caught a fever, or need more review")
+                    with gr.Row():
+                        adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
+                        done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
+                    adapt_msg = gr.Markdown()
+                timeline_html = gr.HTML(EMPTY)
+                horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
+                table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the Setup section._")
 
-        with gr.Tab("🟣 Agent Telemetry"):
-            gr.Markdown("### 🔍 Transparent Multi-Agent Cognitive Trace\nInspect every thought, action, tool invocation, observation, decision, and inter-agent message in real time.")
-            trace_html = gr.HTML(render_trace(None))
-            trace_btn = gr.Button("🔄 Refresh Telemetry Audit Stream")
+            # -----------------------------------------------------------------
+            # VIEW 3: Quiz Arena
+            # -----------------------------------------------------------------
+            with gr.Column(visible=False) as quiz_view:
+                gr.HTML("""
+                <div class='dash-main-title'>⚡ Cognitive Quiz Arena</div>
+                """)
+                with gr.Row():
+                    with gr.Column(scale=3):
+                        with gr.Row():
+                            q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions")
+                            q_btn = gr.Button("🎯 Generate Targeted Quiz on Selected Topics", variant="primary")
+                        quiz_md = gr.Markdown("_Generate a quiz to begin assessment._")
+                        ans_boxes = [gr.Textbox(lines=3, visible=False, label=f"Your answer to Q{i + 1}") for i in range(6)]
+                        submit_btn = gr.Button("📤 Submit Answers for Cognitive Grading", variant="primary")
+                        feedback_md = gr.Markdown()
+                    with gr.Column(scale=2):
+                        analytics_html = gr.HTML(EMPTY)
 
-    VIEW = [timeline_html, table_md, summary_html, analytics_html, trace_html]
-    build_btn.click(build_plan, [orch_state, s_name, s_exam, s_target, s_hours, s_start, *subject_inputs],
-                    [orch_state, build_status, diag_html, *VIEW])
+    # EVENT WIRING
+    def switch_nav_view(selected_tab: str):
+        return (
+            gr.update(visible=(selected_tab == "⚙️ Setup & Diagnostics")),
+            gr.update(visible=(selected_tab == "📅 Schedule & Roadmap")),
+            gr.update(visible=(selected_tab == "⚡ Quiz Arena"))
+        )
+
+    nav_choice.change(switch_nav_view, [nav_choice], [setup_view, roadmap_view, quiz_view])
+
+    VIEW = [timeline_html, table_md, summary_html, analytics_html]
+    build_btn.click(
+        build_plan,
+        [orch_state, s_name, s_exam, s_target, s_hours, s_start, s_file, *subject_inputs],
+        [orch_state, build_status, diag_html, *VIEW]
+    )
     s_exam.change(render_mini_calendar, [s_exam], [schedule_overview_html])
     adapt_btn.click(do_adapt, [orch_state, a_missed, a_fatigue, a_hours, a_note], [orch_state, adapt_msg, *VIEW])
     done_btn.click(do_complete, [orch_state], [orch_state, adapt_msg, *VIEW])
     horizon.change(set_horizon, [orch_state, horizon], [orch_state, table_md])
     q_btn.click(make_quiz, [orch_state, q_n], [orch_state, quiz_md, *ans_boxes, feedback_md, *VIEW])
     submit_btn.click(submit_quiz, [orch_state, *ans_boxes], [orch_state, feedback_md, *VIEW])
-    trace_btn.click(refresh_trace, [orch_state], [trace_html])
 
 if __name__ == "__main__":
     import os
