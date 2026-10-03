@@ -1891,25 +1891,14 @@ def view(o: Optional[Orchestrator]) -> tuple:
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Global Full-Width Canvas Styling */
-html, body {
-  background-color: #070b12 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-  min-height: 100vh !important;
-  overflow-x: hidden !important;
-}
-
-body, .gradio-container, .gradio-container.app, div[data-testid="block"] {
-  background-color: #070b12 !important;
+/* Global Canvas Styling */
+body, .gradio-container {
+  background-color: #0b0f19 !important;
   color: #f8fafc !important;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
-  max-width: 100% !important;
-  width: 100% !important;
-  margin: 0 !important;
-  padding: 16px 32px 40px !important;
-  box-sizing: border-box !important;
+  max-width: 1360px !important;
+  margin: auto !important;
+  padding: 10px 18px !important;
 }
 
 /* Hide any footers, watermarks or branding */
@@ -1919,21 +1908,18 @@ footer, .gradio-footer, .built-with {
 
 /* Hero Banner Card exactly matching Image */
 .hero-image2 {
-  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.92) 50%, rgba(45, 25, 20, 0.85) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  border-radius: 20px !important;
-  padding: 26px 36px !important;
-  margin-bottom: 22px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(105deg, #131b2c 0%, #172338 55%, #3d2319 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 18px !important;
+  padding: 26px 30px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   text-align: center !important;
   position: relative !important;
   overflow: hidden !important;
-  backdrop-filter: blur(16px) !important;
 }
 
 .hero-title-group h1 {
@@ -2951,11 +2937,8 @@ button.secondary, button[variant="secondary"] {
 }
 
 .top-cards-row {
-  display: flex !important;
-  gap: 20px !important;
+  gap: 16px !important;
   align-items: stretch !important;
-  margin-bottom: 20px !important;
-  width: 100% !important;
 }
 
 .portfolio-group-card {
@@ -2970,27 +2953,12 @@ button.secondary, button[variant="secondary"] {
 }
 
 .subject-item-box {
-  background: rgba(15, 23, 42, 0.65) !important;
+  background: rgba(15, 23, 42, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 12px !important;
-  padding: 8px 14px !important;
-  margin-bottom: 8px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 10px !important;
   transition: all 0.2s ease !important;
-}
-
-.subject-item-box .gradio-slider {
-  margin-bottom: 0 !important;
-  padding: 0 !important;
-}
-
-.subject-item-box .gradio-slider input[type="range"] {
-  height: 4px !important;
-}
-
-.subject-item-box .gradio-slider label span {
-  font-size: 10.5px !important;
-  font-weight: 600 !important;
-  color: #94a3b8 !important;
 }
 
 .subject-item-box:hover {
@@ -3086,54 +3054,36 @@ button.secondary, button[variant="secondary"] {
 }
 
 .syllabus-viewer-card {
-  background: linear-gradient(180deg, #101625 0%, #0d121f 100%) !important;
+  background: #121826 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 18px !important;
-  padding: 18px 20px !important;
+  border-radius: 16px !important;
+  padding: 16px 18px !important;
   height: auto !important;
-  min-height: 520px !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  min-height: 540px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
   display: flex !important;
   flex-direction: column !important;
-  box-sizing: border-box !important;
 }
 
 .syl-tab-pills {
   display: flex !important;
-  flex-direction: row !important;
-  gap: 8px !important;
-  margin-bottom: 12px !important;
-  flex-wrap: nowrap !important;
-  width: 100% !important;
+  gap: 6px !important;
+  margin-bottom: 10px !important;
+  flex-wrap: wrap !important;
 }
 
 .syl-pill-btn {
-  flex: 1 1 0 !important;
   background: rgba(30, 41, 59, 0.7) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #94a3b8 !important;
   border-radius: 8px !important;
   font-size: 11px !important;
-  font-weight: 700 !important;
-  padding: 6px 4px !important;
-  min-height: 32px !important;
-  height: 32px !important;
-  transition: all 0.18s ease !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+  height: 28px !important;
+  transition: all 0.15s ease !important;
   cursor: pointer !important;
-  white-space: nowrap !important;
-  text-align: center !important;
-}
-
-.syllabus-badge {
-  white-space: nowrap !important;
-  background: rgba(56, 189, 248, 0.12) !important;
-  color: #38bdf8 !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  border-radius: 12px !important;
-  padding: 3px 12px !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.03em !important;
 }
 
 .syl-pill-btn:hover {
@@ -3183,21 +3133,15 @@ button.secondary, button[variant="secondary"] {
   max-height: 380px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  padding-right: 4px !important;
-}
-
-.module-checkboxes-viewer .wrap {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 6px 10px !important;
+  padding-right: 6px !important;
 }
 
 .module-checkboxes-viewer label {
-  background: rgba(15, 23, 42, 0.6) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-radius: 8px !important;
   padding: 7px 10px !important;
-  margin-bottom: 0 !important;
+  margin-bottom: 5px !important;
   transition: all 0.15s ease !important;
   font-size: 11.5px !important;
   color: #e2e8f0 !important;
@@ -4055,8 +3999,8 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
 
                 # TOP ROW: Subject Management (Left) + Subject Syllabus Viewer (Right)
                 with gr.Row(elem_classes=["top-cards-row"]):
-                    # Top-Left Card: Subject Management (50% equal balance)
-                    with gr.Column(scale=1, min_width=380, elem_classes=["subject-portfolio-col"]):
+                    # Top-Left Card: Subject Management
+                    with gr.Column(scale=11, elem_classes=["subject-portfolio-col"]):
                         with gr.Group(elem_classes=["portfolio-group-card"]):
                             gr.HTML("""
                             <div class='card-header-bar'>
@@ -4081,8 +4025,8 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                                 sub_components[sname] = (c_inc, c_conf, c_score, c_wt)
                                 syl_btns[sname] = syl_btn
 
-                    # Top-Right Card: Subject Syllabus & Curriculum Explorer (50% equal balance)
-                    with gr.Column(scale=1, min_width=380, elem_classes=["syllabus-panel-col"]):
+                    # Top-Right Card: Subject Syllabus & Curriculum Explorer
+                    with gr.Column(scale=9, elem_classes=["syllabus-panel-col"]):
                         with gr.Group(elem_classes=["syllabus-viewer-card"]):
                             gr.HTML("""
                             <div class='card-header-bar'>
