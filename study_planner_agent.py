@@ -2925,11 +2925,13 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
 
     with gr.Tabs():
         with gr.Tab("⚙️ Setup & Diagnostics"):
-            # EXACT 3-COLUMN DASHBOARD LAYOUT FROM REFERENCE IMAGE
-            with gr.Row():
-                # COLUMN 1: Portfolio & Plan Diagnostics (Left ~27%)
-                with gr.Column(scale=3):
-                    with gr.Group():
+            # BALANCED TWO-COLUMN DASHBOARD LAYOUT (Matching Reference Design)
+            with gr.Row(elem_classes=["dash-main-container"]):
+                # ==========================================
+                # LEFT COLUMN: Portfolio & Plan Diagnostics (~28% width)
+                # ==========================================
+                with gr.Column(scale=3, min_width=290, elem_classes=["left-diag-column"]):
+                    with gr.Group(elem_classes=["diagnostics-card"]):
                         gr.HTML("""
                         <div class='card-header-bar'>
                             <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
@@ -2943,119 +2945,131 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
                         s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
                         s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
                         s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
-                        build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg")
+                        build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg", elem_classes=["build-plan-button"])
                         build_status = gr.Markdown()
 
-                # COLUMN 2: Subject Portfolio + Performance Snapshot (Center ~45%)
-                with gr.Column(scale=5):
-                    # Top Card: Subject Portfolio ⓘ (B.Tech 2nd Year Term 1 Subjects)
-                    with gr.Group():
-                        gr.HTML("""
-                        <div class='card-header-bar'>
-                            <div class='card-header-title'>Subject Portfolio <span class='info-icon' title='Select subjects optionally, set baseline confidence and initial quiz score'>ⓘ</span></div>
-                            <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
-                                <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
-                                <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
-                            </svg>
-                        </div>
-                        """)
-                        subject_inputs: List[Any] = []
-                        for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
-                            with gr.Group():
-                                with gr.Row():
-                                    c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=2)
-                                    c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=2)
-                                    c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=2)
-                                    c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
-                                with gr.Accordion(f"📂 Select Modules for {sname} ({len(CURRICULUM[sname])} Modules Available)", open=False, elem_classes=["module-accordion"]):
-                                    c_mods = gr.CheckboxGroup(
-                                        choices=list(CURRICULUM[sname].keys()),
-                                        value=list(CURRICULUM[sname].keys()),
-                                        label=f"Select which modules to study for {sname}:",
-                                        elem_classes=["module-checkboxes"]
-                                    )
-                            subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
-
-                    # Bottom Card: Performance Snapshot with Multi-Charts from Image
+                # ==========================================
+                # RIGHT COLUMN: Main Setup & Diagnostics Area (~72% width)
+                # ==========================================
+                with gr.Column(scale=7, elem_classes=["right-main-column"]):
                     gr.HTML("""
-                    <div class='snapshot-card'>
-                      <div class='snapshot-header'>
-                        <div class='snapshot-title'>Performance Snapshot</div>
-                        <div class='snapshot-legend'>
-                          <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
-                          <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
-                        </div>
-                      </div>
-                      <div class='snapshot-charts-row'>
-                        <!-- Left: Smooth Blue Area Curve -->
-                        <div>
-                          <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
-                            <defs>
-                              <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
-                                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
-                              </linearGradient>
-                            </defs>
-                            <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
-                            <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
-                          </svg>
-                        </div>
-
-                        <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
-                        <div>
-                          <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
-                            <defs>
-                              <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
-                                <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
-                              </linearGradient>
-                            </defs>
-                            <!-- Horizontal gridlines -->
-                            <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
-                            <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
-                            <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                            <!-- Y-axis text -->
-                            <text x="5" y="18" fill="#64748b" font-size="8">40</text>
-                            <text x="5" y="48" fill="#64748b" font-size="8">20</text>
-                            <text x="5" y="78" fill="#64748b" font-size="8">0</text>
-                            <!-- Curves -->
-                            <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
-                            <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
-                            <!-- X-axis labels -->
-                            <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
-                            <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
-                            <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
-                            <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
-                            <text x="160" y="87" fill="#64748b" font-size="7">May</text>
-                          </svg>
-                        </div>
-
-                        <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
-                        <div>
-                          <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
-                            <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                            <!-- Bars -->
-                            <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
-                            <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
-                            <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
-                            <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
-                            <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
-                            <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
-                            <!-- Labels -->
-                            <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
-                            <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
-                            <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
-                            <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
+                    <div class='dash-main-title'>Portfolio &amp; Plan Setup and Diagnostics</div>
                     """)
 
-                # COLUMN 3: Schedule Overview (Right ~28%) - Live Dynamic Calendar
-                with gr.Column(scale=3):
-                    schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
+                    # TOP ROW: Subject Portfolio (Left) + Schedule Overview (Right)
+                    with gr.Row(elem_classes=["top-cards-row"]):
+                        # Top-Left: Subject Portfolio
+                        with gr.Column(scale=11, elem_classes=["subject-portfolio-col"]):
+                            with gr.Group(elem_classes=["portfolio-group-card"]):
+                                gr.HTML("""
+                                <div class='card-header-bar'>
+                                    <div class='card-header-title'>Subject Portfolio <span class='info-icon' title='Select subjects, customize confidence, quiz score and target modules'>ⓘ</span></div>
+                                    <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                                        <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
+                                        <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
+                                    </svg>
+                                </div>
+                                """)
+                                subject_inputs: List[Any] = []
+                                for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
+                                    with gr.Group(elem_classes=["subject-item-box"]):
+                                        with gr.Row():
+                                            c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
+                                            c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=2)
+                                        with gr.Row():
+                                            c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
+                                            c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
+                                        with gr.Accordion(f"📂 Select Modules for {sname} ({len(CURRICULUM[sname])} Available)", open=False, elem_classes=["module-accordion"]):
+                                            c_mods = gr.CheckboxGroup(
+                                                choices=list(CURRICULUM[sname].keys()),
+                                                value=list(CURRICULUM[sname].keys()),
+                                                label=f"Pick modules for {sname}:",
+                                                elem_classes=["module-checkboxes"]
+                                            )
+                                    subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
+
+                        # Top-Right: Schedule Overview Live Calendar
+                        with gr.Column(scale=9, elem_classes=["schedule-overview-col"]):
+                            schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
+
+                    # BOTTOM ROW: Performance Snapshot (spans full width under Subject Portfolio & Schedule Overview)
+                    with gr.Row(elem_classes=["snapshot-row"]):
+                        with gr.Column(scale=1):
+                            gr.HTML("""
+                            <div class='snapshot-card'>
+                              <div class='snapshot-header'>
+                                <div class='snapshot-title'>Performance Snapshot</div>
+                                <div class='snapshot-legend'>
+                                  <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
+                                  <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
+                                </div>
+                              </div>
+                              <div class='snapshot-charts-row'>
+                                <!-- Left: Smooth Blue Area Curve -->
+                                <div class='chart-col'>
+                                  <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
+                                    <defs>
+                                      <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+                                        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
+                                    <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+                                  </svg>
+                                </div>
+
+                                <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
+                                <div class='chart-col'>
+                                  <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
+                                    <defs>
+                                      <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
+                                      </linearGradient>
+                                    </defs>
+                                    <!-- Horizontal gridlines -->
+                                    <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
+                                    <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
+                                    <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                                    <!-- Y-axis text -->
+                                    <text x="5" y="18" fill="#64748b" font-size="8">40</text>
+                                    <text x="5" y="48" fill="#64748b" font-size="8">20</text>
+                                    <text x="5" y="78" fill="#64748b" font-size="8">0</text>
+                                    <!-- Curves -->
+                                    <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
+                                    <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
+                                    <!-- X-axis labels -->
+                                    <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
+                                    <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
+                                    <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
+                                    <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
+                                    <text x="160" y="87" fill="#64748b" font-size="7">May</text>
+                                  </svg>
+                                </div>
+
+                                <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
+                                <div class='chart-col'>
+                                  <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
+                                    <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
+                                    <!-- Bars -->
+                                    <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
+                                    <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
+                                    <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
+                                    <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
+                                    <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
+                                    <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
+                                    <!-- Labels -->
+                                    <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
+                                    <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
+                                    <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
+                                    <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                            """)
 
             # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
             diag_html = gr.HTML(EMPTY)
