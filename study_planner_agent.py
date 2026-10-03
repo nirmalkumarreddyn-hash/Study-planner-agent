@@ -1654,10 +1654,148 @@ EMPTY = (
 )
 
 
-def render_diag(st: AppState) -> str:
+def render_table_html(st: AppState, horizon: int = 14) -> str:
+    plan, prof = st.plan, st.profile
+    if plan is None or prof is None:
+        return "<p class='dash-muted'>No study plan generated yet.</p>"
+    start = max(plan.start, st.cursor - timedelta(days=3))
+    end = min(prof.exam_date, st.cursor + timedelta(days=horizon))
+    by_day: Dict[date, List[StudyBlock]] = {}
+    for b in plan.blocks:
+        by_day.setdefault(b.day, []).append(b)
+    
+    rows_html = []
+    d = start
+    while d <= end:
+        parts, mins = [], 0
+        for b in sorted(by_day.get(d, []), key=lambda x: (x.slot, x.kind == "break")):
+            mark = {"done": " <span class='badge-done'>✅ Completed</span>", "missed": " <span class='badge-missed'>⚠️ Missed</span>", "planned": ""}[b.status]
+            icon, label = KIND_META.get(b.kind, ("📚", b.kind))
+            if b.kind == "break":
+                parts.append(f"<div class='session-item session-break'>{icon} <span>{b.minutes} min break</span></div>")
+            elif b.kind == "rest":
+                parts.append(f"<div class='session-item session-rest'>{icon} <b>{E(b.note)}</b></div>")
+            else:
+                mins += b.minutes
+                c = SUBJECT_COLORS.get(b.subject, "#38bdf8")
+                parts.append(
+                    f"<div class='session-item session-study' style='border-left-color:{c}'>"
+                    f"  <span class='session-time'>{b.start}</span>"
+                    f"  <span class='session-badge' style='background:{c}22;color:{c};border:1px solid {c}55'>{icon} {label}</span>"
+                    f"  <span class='session-subj' style='color:{c}'>{E(b.subject)}</span> &rarr; "
+                    f"  <span class='session-topic'>{E(b.topic)}</span> "
+                    f"  <span class='session-dur'>({b.minutes} min)</span>{mark}"
+                    f"  <div class='session-note'>💡 {E(b.note)}</div>"
+                    f"</div>"
+                )
+        if d == prof.exam_date:
+            parts = ["<div class='session-item session-exam'>🎯 <b>FINAL EXAM DAY &mdash; Comprehensive Review &amp; Readiness</b></div>"]
+        
+        day_no = (d - plan.start).days + 1
+        is_today = (d == st.cursor)
+        is_past = (d < st.cursor)
+        is_exam = (d == prof.exam_date)
+        row_cls = "day-row" + (" is-today" if is_today else "") + (" is-exam" if is_exam else "")
+        today_badge = "<span class='today-badge-chip'>TODAY</span>" if is_today else ""
+        date_str = f"{d:%a, %d %b}"
+        
+        rows_html.append(
+            f"<tr class='{row_cls}'>"
+            f"  <td class='td-day-num'><span class='day-circle'>Day {day_no}</span></td>"
+            f"  <td class='td-day-date'><b>{date_str}</b> {today_badge}</td>"
+            f"  <td class='td-day-sessions'>{''.join(parts) or '<span class="dash-muted">No sessions scheduled</span>'}</td>"
+            f"  <td class='td-day-mins'><span class='time-pill'>{mins} min</span></td>"
+            f"</tr>"
+        )
+        d += timedelta(days=1)
+        
+    return f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'>
+        <span class='title-ico'>📋</span>
+        <span>Day-by-Day Targeted Study Plan</span>
+        <span class='panel-subtitle'>Detailed chronological roadmap ({horizon} days horizon)</span>
+      </div>
+      <div class='table-responsive'>
+        <table class='dash-table schedule-table'>
+          <thead>
+            <tr>
+              <th style='width:90px'>DAY #</th>
+              <th style='width:160px'>DATE</th>
+              <th>TARGETED STUDY SESSIONS &amp; MODULE TOPICS</th>
+              <th style='width:110px'>TOTAL TIME</th>
+            </tr>
+          </thead>
+          <tbody>
+            {''.join(rows_html)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def render_full_study_plan(st: AppState) -> str:
     prof = st.profile
-    if prof is None:
+    plan = st.plan
+    if prof is None or plan is None:
         return EMPTY
+    
+    days_left = max(0, (prof.exam_date - st.cursor).days)
+    total_sessions = sum(1 for b in plan.blocks if b.kind not in ("break", "rest"))
+    sessions_ahead = sum(1 for b in plan.blocks if b.day >= st.cursor and b.kind not in ("break", "rest"))
+    
+    # 1. Executive KPIs Grid (6 cards)
+    kpis = cards([
+        ("Days to Exam", f"{days_left} days"),
+        ("Target Mastery", f"{prof.target_score}%"),
+        ("Projected Mastery", f"{plan.projected_mastery:.0%}"),
+        ("Study Capacity", f"{prof.hours_per_day:g} h/day"),
+        ("Study Sessions", f"{sessions_ahead} ahead ({total_sessions} total)"),
+        ("Syllabus Coverage", f"{plan.coverage:.0%}"),
+    ])
+    
+    # 2. Plan Header Banner
+    header = f"""
+    <div class='plan-status-banner'>
+      <div class='plan-status-left'>
+        <div class='plan-status-badge'>🚀 Active Study Plan</div>
+        <div class='plan-status-title'>Master Academic Roadmap &amp; Targeted Schedule</div>
+        <div class='plan-status-sub'>Synthesized for <b>{E(prof.name)}</b> &middot; Target Exam: <b>{prof.exam_date:%b %d, %Y}</b> ({days_left} days remaining) &middot; Plan Version: <b>v{plan.version}</b></div>
+      </div>
+      <div class='plan-status-right'>
+        <span class='plan-engine-pill'>⚡ Orchestrated Engine</span>
+      </div>
+    </div>
+    """
+    
+    # 3. Cognitive Coach Assessment
+    coach = f"""
+    <div class='dash-panel hero-coach-panel'>
+      <div class='dash-panel-title'>
+        <span class='title-ico'>💡</span>
+        <span>Cognitive Coach Assessment &amp; Strategy Brief</span>
+      </div>
+      <p class='coach-body-text'>{E(st.insight)}</p>
+    </div>
+    """
+    
+    # 4. Interactive Visual Timeline / Calendar
+    timeline = f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'>
+        <span class='title-ico'>📅</span>
+        <span>Interactive Visual Study Roadmap &amp; Calendar Timeline</span>
+        <span class='panel-subtitle'>Dynamic spaced-repetition distribution across the calendar</span>
+      </div>
+      {render_timeline(st)}
+    </div>
+    """
+    
+    # 5. Day-by-Day Targeted Study Plan Table
+    table = render_table_html(st, horizon=14)
+    
+    # 6. Priority Focus Areas
     weak_rows = "".join(
         f"<tr>"
         f"  <td class='td-topic'><b>{E(n)}</b></td>"
@@ -1667,11 +1805,49 @@ def render_diag(st: AppState) -> str:
         f"</tr>"
         for n in st.weak
     )
+    priority_panel = f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'>
+        <span class='title-ico'>🎯</span>
+        <span>Priority Focus Areas (Need &times; Gap &times; Exam Weight)</span>
+      </div>
+      <table class='dash-table'>
+        <thead>
+          <tr><th>TOPIC</th><th>SUBJECT</th><th>CURRENT MASTERY</th><th>PRIORITY NEED</th></tr>
+        </thead>
+        <tbody>{weak_rows}</tbody>
+      </table>
+    </div>
+    """
+    
+    # 7. Metacognitive Calibration & Foundation Risk
     cal = "".join(
         f"<span class='meta-chip' style='border-color:{'#ef4444' if v > .25 else '#10b981' if abs(v) <= .25 else '#f59e0b'};background:{'rgba(239,68,68,0.12)' if v > .25 else 'rgba(16,185,129,0.12)' if abs(v) <= .25 else 'rgba(245,158,11,0.12)'};color:{'#f87171' if v > .25 else '#34d399' if abs(v) <= .25 else '#fbbf24'}'>{E(k)}: {v:+.0%}</span>"
         for k, v in st.calibration.items()
     )
     frag = "".join(f"<li class='fragile-item'>⚠️ {E(f)}</li>" for f in st.fragile) or "<li class='fragile-none'>✅ No fragile prerequisite foundations detected.</li>"
+    calibration_panel = f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'><span class='title-ico'>⚖️</span><span>Metacognitive Calibration &amp; Foundation Risk</span></div>
+      <div class='meta-subhead'>Confidence vs Measured Score Gap:</div>
+      <div class='meta-chips-wrap'>{cal}</div>
+      <div class='meta-subhead' style='margin-top:14px'>Prerequisite Vulnerabilities:</div>
+      <ul class='dash-clean-list'>{frag}</ul>
+    </div>
+    """
+    
+    # 8. Roadmap Milestones & Alerts
+    ms_items = "".join(f"<li class='dash-list-item'><span class='list-bullet-ico'>🏁</span> {E(m)}</li>" for m in plan.milestones)
+    warn_items = "".join(f"<li class='dash-list-item warn-item'><span class='list-bullet-ico'>⚠️</span> {E(w)}</li>" for w in plan.warnings)
+    milestones_panel = f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'><span class='title-ico'>🏁</span><span>Roadmap Milestones &amp; Targets</span></div>
+      <ul class='dash-clean-list'>{ms_items}</ul>
+      {f"<div class='meta-subhead' style='margin-top:12px'>Capacity &amp; Pacing Warnings:</div><ul class='dash-clean-list'>{warn_items}</ul>" if plan.warnings else ""}
+    </div>
+    """
+    
+    # 9. Comprehensive Competency & Knowledge Matrix
     bars = ""
     for s in prof.subjects:
         c = SUBJECT_COLORS.get(s.name, "#38bdf8")
@@ -1680,35 +1856,38 @@ def render_diag(st: AppState) -> str:
             f"  <div class='matrix-head'>"
             f"    <span class='matrix-bullet' style='background:{c};box-shadow:0 0 8px {c}88'></span>"
             f"    <span class='matrix-title' style='color:{c}'>{E(s.name)}</span>"
-            f"    <span class='matrix-meta'>Weight: {s.exam_weight}/5 · Baseline Quiz: {s.quiz_score:.0f}%</span>"
+            f"    <span class='matrix-meta'>Weight: {s.exam_weight}/5 &middot; Baseline Quiz: {s.quiz_score:.0f}%</span>"
             f"  </div>"
             + "".join(bar(t.name, t.subject, t.mastery) for t in st.topics.values() if t.subject == s.name)
             + "</div>"
         )
-    return (
-        cards([("Days to exam", str((prof.exam_date - st.cursor).days)), ("Baseline mastery", f"{st.baseline_mastery:.0%}"),
-               ("Target", f"{prof.target_score}%"), ("Hours per day", f"{prof.hours_per_day:g} h")])
-        + f"<div class='dash-panel hero-coach-panel'>"
-        f"  <div class='dash-panel-title'><span class='title-ico'>💡</span><span>Cognitive Coach Assessment &amp; Strategy Brief</span></div>"
-        f"  <p class='coach-body-text'>{E(st.insight)}</p>"
-        f"</div>"
-        + f"<div class='dash-panel'>"
-        f"  <div class='dash-panel-title'><span class='title-ico'>🎯</span><span>Priority Focus Areas (Need &times; Gap &times; Exam Weight)</span></div>"
-        f"  <table class='dash-table'><thead><tr><th>TOPIC</th><th>SUBJECT</th><th>CURRENT MASTERY</th><th>PRIORITY NEED</th></tr></thead><tbody>{weak_rows}</tbody></table>"
-        f"</div>"
-        + f"<div class='dash-panel'>"
-        f"  <div class='dash-panel-title'><span class='title-ico'>⚖️</span><span>Metacognitive Calibration &amp; Foundation Risk</span></div>"
-        f"  <div class='meta-subhead'>Confidence vs Measured Score Gap:</div>"
-        f"  <div class='meta-chips-wrap'>{cal}</div>"
-        f"  <div class='meta-subhead' style='margin-top:14px'>Prerequisite Vulnerabilities:</div>"
-        f"  <ul class='dash-clean-list'>{frag}</ul>"
-        f"</div>"
-        + f"<div class='dash-panel'>"
-        f"  <div class='dash-panel-title'><span class='title-ico'>📊</span><span>Comprehensive Competency &amp; Knowledge Matrix</span></div>"
-        f"  {bars}"
-        f"  <p class='dash-note'>Mastery values update dynamically via Bayesian inference after each completed quiz.</p>"
-        f"</div>"
-    )
+    matrix_panel = f"""
+    <div class='dash-panel'>
+      <div class='dash-panel-title'><span class='title-ico'>📊</span><span>Comprehensive Competency &amp; Knowledge Matrix</span></div>
+      {bars}
+      <p class='dash-note'>Mastery values update dynamically via Bayesian inference after each completed quiz.</p>
+    </div>
+    """
+    
+    return f"""
+    <div class='full-study-plan-wrapper'>
+      {header}
+      {kpis}
+      {coach}
+      {timeline}
+      {table}
+      <div class='plan-split-row'>
+        <div class='plan-split-col'>{priority_panel}</div>
+        <div class='plan-split-col'>{calibration_panel}</div>
+      </div>
+      {milestones_panel}
+      {matrix_panel}
+    </div>
+    """
+
+
+def render_diag(st: AppState) -> str:
+    return render_full_study_plan(st)
 
 
 def render_timeline(st: AppState) -> str:
@@ -1892,18 +2071,17 @@ CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ========================================================================== */
-/* 1. Design System Tokens & True Full-Page Edge-to-Edge Canvas               */
+/* 1. Design System Tokens & Full-Page Canvas                                 */
 /* ========================================================================== */
 :root {
   --bg-canvas: #060911;
   --bg-card: #0b1120;
-  --bg-card-elevated: #0f172a;
-  --bg-card-subtle: #131c31;
-  --bg-input: #101828;
+  --bg-card-subtle: #111a2e;
+  --bg-input: #0e1628;
   
   --border-subtle: rgba(255, 255, 255, 0.07);
   --border-card: rgba(255, 255, 255, 0.08);
-  --border-highlight: rgba(56, 189, 248, 0.4);
+  --border-focus: rgba(56, 189, 248, 0.5);
   
   --accent-cyan: #38bdf8;
   --accent-sky: #0ea5e9;
@@ -1919,14 +2097,13 @@ CSS = """
   
   --radius-card: 16px;
   --radius-pill: 9999px;
-  --radius-control: 10px;
+  --radius-control: 8px;
   
   --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* Force True 100% Full-Width (NOT Centered in the middle with margins) */
 html, body {
   background-color: var(--bg-canvas) !important;
   background-image: 
@@ -1945,7 +2122,6 @@ html, body {
   -webkit-font-smoothing: antialiased !important;
 }
 
-/* Eliminate Gradio's default centering container constraints */
 #root,
 .gradio-container,
 .gradio-container.app,
@@ -1957,17 +2133,15 @@ html, body {
   max-width: 100% !important;
   min-width: 100% !important;
   margin: 0 !important;
-  padding: 16px 28px 48px !important;
+  padding: 14px 24px 48px !important;
   box-sizing: border-box !important;
   background: transparent !important;
 }
 
-/* Hide footers, watermarks or branding */
 footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   display: none !important;
 }
 
-/* Sleek custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -1984,14 +2158,14 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 }
 
 /* ========================================================================== */
-/* 2. Top Hero Header Card (Full-Width Executive Dissected Header)            */
+/* 2. Top Hero Header Card                                                    */
 /* ========================================================================== */
 .hero-image2 {
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(11, 17, 32, 0.7) 100%) !important;
   border: 1px solid var(--border-card) !important;
   border-radius: 18px !important;
-  padding: 26px 36px !important;
-  margin-bottom: 22px !important;
+  padding: 22px 36px !important;
+  margin-bottom: 16px !important;
   width: 100% !important;
   box-sizing: border-box !important;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
@@ -2015,58 +2189,57 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 
 .hero-title-group h1 {
   font-family: var(--font-display) !important;
-  font-size: 34px !important;
+  font-size: 30px !important;
   font-weight: 800 !important;
   letter-spacing: -0.025em !important;
   margin: 0 0 6px 0 !important;
-  color: #ffffff !important;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5) !important;
+  background: linear-gradient(135deg, #ffffff 30%, #e2e8f0 70%, #94a3b8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .hero-title-group p {
-  font-size: 14.5px !important;
   color: var(--text-muted) !important;
-  margin: 0 0 18px 0 !important;
-  font-weight: 400 !important;
+  font-size: 13.5px !important;
+  margin: 0 0 14px 0 !important;
+  font-weight: 500 !important;
   letter-spacing: 0.02em !important;
 }
 
 .hero-crests-row {
   display: flex !important;
-  flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 28px !important;
-  margin-bottom: 20px !important;
+  gap: 24px !important;
+  margin-bottom: 14px !important;
 }
 
 .hero-chips-row {
   display: flex !important;
-  flex-direction: row !important;
   flex-wrap: wrap !important;
-  align-items: center !important;
   justify-content: center !important;
-  gap: 12px !important;
+  gap: 10px !important;
 }
 
 .hero-pill-badge {
+  background: rgba(14, 22, 38, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  padding: 4px 14px !important;
+  border-radius: var(--radius-pill) !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;
-  padding: 6px 16px !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: var(--radius-pill) !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-  color: var(--text-secondary) !important;
-  backdrop-filter: blur(8px) !important;
-  transition: all 0.2s ease !important;
+  gap: 6px !important;
 }
 
-.hero-pill-badge:hover {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+.dot-blue {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-cyan);
 }
 
 .dot-pink {
@@ -2091,121 +2264,134 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 }
 
 /* ========================================================================== */
-/* 3. Master Dissected 2-Column Dashboard Grid                                */
+/* 3. Top Master Navigation Bar                                               */
 /* ========================================================================== */
-.dash-main-container {
+.master-nav-row {
+  margin-bottom: 16px !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.master-nav-radio {
+  background: transparent !important;
+  border: none !important;
+}
+
+.master-nav-radio .wrap {
   display: flex !important;
   flex-direction: row !important;
-  gap: 24px !important;
+  justify-content: center !important;
+  gap: 14px !important;
   width: 100% !important;
-  align-items: flex-start !important;
-  box-sizing: border-box !important;
 }
 
-/* Left Dissected Column (Fixed Command Sidebar ~320px) */
-.left-diag-column {
-  width: 320px !important;
-  min-width: 320px !important;
-  max-width: 320px !important;
-  flex: 0 0 320px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 20px !important;
+.master-nav-radio label {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 10px 22px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: var(--radius-pill) !important;
+  font-family: var(--font-display) !important;
+  font-size: 0.90rem !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Right Fluid Canvas (Edge-to-Edge remaining width) */
-.right-main-column {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-  width: calc(100% - 344px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 20px !important;
+.master-nav-radio label input[type="radio"] {
+  display: none !important;
+}
+
+.master-nav-radio label:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.master-nav-radio label:has(input:checked),
+.master-nav-radio label.selected {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(14, 165, 233, 0.08) 100%) !important;
+  border: 1.5px solid #38bdf8 !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
 }
 
 .dash-main-title {
   font-family: var(--font-display) !important;
-  font-size: 21px !important;
+  font-size: 20px !important;
   font-weight: 700 !important;
   letter-spacing: -0.015em !important;
   color: #ffffff !important;
-  margin-bottom: 16px !important;
+  margin-bottom: 12px !important;
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
 }
 
 /* ========================================================================== */
-/* 4. Left Sidebar Components (Nav Menu & Diagnostics Card)                   */
+/* 4. THE THREE SECTIONS SIDE-BY-SIDE IN ONE ROW (PERFECT STRAIGHT BASELINE)  */
 /* ========================================================================== */
-.sidebar-nav-container {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 16px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+.three-sections-row,
+.three-sections-row.gr-row,
+.three-sections-row > div,
+.three-sections-row.gr-row > div {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 14px !important;
+  width: 100% !important;
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  margin-bottom: 20px !important;
   box-sizing: border-box !important;
 }
 
-.sidebar-nav-title {
-  font-family: var(--font-display) !important;
-  font-size: 0.72rem !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  font-weight: 700 !important;
-  color: var(--text-muted) !important;
-  margin-bottom: 10px !important;
-  padding-left: 6px !important;
-}
-
-.sidebar-nav-radio .wrap {
+.section-diag-col {
+  flex: 0 0 280px !important;
+  min-width: 250px !important;
+  max-width: 310px !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 7px !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.sidebar-nav-radio label {
+.section-subjects-col {
+  flex: 1 1 0% !important;
+  min-width: 270px !important;
   display: flex !important;
-  align-items: center !important;
-  padding: 11px 15px !important;
-  background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid transparent !important;
-  border-radius: 10px !important;
-  color: var(--text-secondary) !important;
-  font-size: 0.88rem !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.sidebar-nav-radio label input[type="radio"] {
-  display: none !important;
+.section-syllabus-col {
+  flex: 1 1 0% !important;
+  min-width: 270px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.sidebar-nav-radio label:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: #ffffff !important;
-  transform: translateX(2px) !important;
-}
-
-.sidebar-nav-radio label:has(input:checked),
-.sidebar-nav-radio label.selected {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0.04) 100%) !important;
-  border: 1px solid rgba(56, 189, 248, 0.45) !important;
-  color: #38bdf8 !important;
-  font-weight: 600 !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15) !important;
-}
-
-.diagnostics-card {
+/* All three cards expand equally to form the straight baseline */
+.diagnostics-card,
+.portfolio-group-card,
+.syllabus-viewer-card {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
   background: var(--bg-card) !important;
   border: 1px solid var(--border-card) !important;
   border-radius: var(--radius-card) !important;
-  padding: 20px 22px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 14px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   box-sizing: border-box !important;
 }
 
@@ -2213,14 +2399,14 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 12px !important;
-  padding-bottom: 10px !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 6px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 .card-header-title {
   font-family: var(--font-display) !important;
-  font-size: 0.98rem !important;
+  font-size: 0.92rem !important;
   font-weight: 700 !important;
   color: #ffffff !important;
   display: flex !important;
@@ -2228,52 +2414,66 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   gap: 6px !important;
 }
 
-.info-icon {
-  font-size: 0.82rem;
-  color: var(--accent-cyan);
-  cursor: help;
-}
-
-/* Inputs & Form Controls */
-.profile-input-box input,
-.exam-input-box input {
-  background: var(--bg-input) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 8px !important;
-  color: #ffffff !important;
-  font-size: 0.88rem !important;
-  padding: 9px 12px !important;
-  transition: all 0.2s ease !important;
-}
-
-.profile-input-box input:focus,
-.exam-input-box input:focus {
-  border-color: var(--accent-cyan) !important;
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
-}
-
-/* Sliders in Diagnostics Card */
-.diagnostics-card .gradio-slider {
-  margin-bottom: 6px !important;
+/* SECTION 1: Clean Controls */
+.diagnostics-card .block,
+.diagnostics-card div[data-testid="block"] {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 0 4px 0 !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
 }
 
 .diagnostics-card label span {
-  font-size: 0.78rem !important;
+  font-size: 0.72rem !important;
   font-weight: 600 !important;
   color: var(--text-secondary) !important;
 }
 
-/* Primary Build Plan Button */
+.diagnostics-card input[type="text"],
+.diagnostics-card input[type="number"] {
+  background: rgba(14, 22, 38, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 6px !important;
+  color: var(--text-primary) !important;
+  font-size: 0.78rem !important;
+  padding: 3px 6px !important;
+  height: 26px !important;
+}
+
+.diagnostics-card input[type="range"] {
+  accent-color: #38bdf8 !important;
+  height: 4px !important;
+}
+
+.file-upload-box {
+  background: rgba(14, 22, 38, 0.6) !important;
+  border: 1.5px dashed rgba(56, 189, 248, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 6px !important;
+  transition: all 0.2s ease !important;
+  margin: 4px 0 !important;
+  flex: 1 1 auto !important;
+  min-height: 90px !important;
+  max-height: 140px !important;
+}
+
+.file-upload-box:hover {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  background: rgba(14, 22, 38, 0.85) !important;
+}
+
 .build-plan-button {
   background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 60%, #38bdf8 100%) !important;
   color: #ffffff !important;
   font-family: var(--font-display) !important;
-  font-size: 0.96rem !important;
+  font-size: 0.90rem !important;
   font-weight: 700 !important;
   border: none !important;
-  border-radius: 12px !important;
-  padding: 13px 18px !important;
-  margin-top: 6px !important;
+  border-radius: 9px !important;
+  padding: 9px 12px !important;
+  margin-top: auto !important;
   box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer !important;
@@ -2286,92 +2486,62 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   box-shadow: 0 10px 28px rgba(14, 165, 233, 0.65) !important;
 }
 
-/* File Upload Compact Dropzone */
-.file-upload-box {
-  background: rgba(16, 24, 40, 0.6) !important;
-  border: 1.5px dashed rgba(56, 189, 248, 0.3) !important;
-  border-radius: 10px !important;
-  padding: 8px !important;
-  transition: all 0.2s ease !important;
-}
-.file-upload-box:hover {
-  border-color: rgba(56, 189, 248, 0.6) !important;
-  background: rgba(16, 24, 40, 0.85) !important;
-}
-
 /* ========================================================================== */
-/* 5. Plan Setup View: Symmetrical Top 50/50 Dissected Grid                  */
+/* SECTION 2: Subject Management (Ends at Straight Baseline with Button)      */
 /* ========================================================================== */
-.top-cards-row {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 20px !important;
-  width: 100% !important;
-  align-items: stretch !important;
-  box-sizing: border-box !important;
-  margin-bottom: 20px !important;
-}
-
-.subject-portfolio-col, .syllabus-panel-col {
-  flex: 1 1 50% !important;
-  max-width: 50% !important;
-  min-width: 0 !important;
+.portfolio-group-card {
   display: flex !important;
   flex-direction: column !important;
-  box-sizing: border-box !important;
+  justify-content: space-between !important;
 }
 
-.portfolio-group-card, .syllabus-viewer-card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 20px 22px !important;
-  flex: 1 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
-}
-
-/* Subject Items in Subject Management */
 .subject-item-box {
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
   background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid rgba(255, 255, 255, 0.04) !important;
-  border-radius: 10px !important;
-  padding: 8px 12px !important;
-  margin-bottom: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 8px !important;
+  padding: 6px 10px !important;
+  margin-bottom: 6px !important;
   transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.subject-item-box:last-child {
+  margin-bottom: 0 !important;
 }
 
 .subject-item-box:hover {
   background: rgba(255, 255, 255, 0.04) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
 }
 
 .subject-header-row {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 2px !important;
+  margin-bottom: 1px !important;
+  padding: 0 !important;
 }
 
 /* Checkbox as SaaS Toggle Switch */
 .subject-header-row label {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 7px !important;
   cursor: pointer !important;
   font-weight: 600 !important;
-  font-size: 0.88rem !important;
+  font-size: 0.80rem !important;
   color: #f8fafc !important;
 }
 
 .subject-header-row input[type="checkbox"] {
   appearance: none !important;
   -webkit-appearance: none !important;
-  width: 36px !important;
-  height: 20px !important;
+  width: 28px !important;
+  height: 15px !important;
   border-radius: 12px !important;
   background: #1e293b !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -2385,10 +2555,10 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 .subject-header-row input[type="checkbox"]::after {
   content: '' !important;
   position: absolute !important;
-  top: 2px !important;
-  left: 2px !important;
-  width: 14px !important;
-  height: 14px !important;
+  top: 1px !important;
+  left: 1.5px !important;
+  width: 11px !important;
+  height: 11px !important;
   border-radius: 50% !important;
   background: #94a3b8 !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -2397,11 +2567,11 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 .subject-header-row input[type="checkbox"]:checked {
   background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
   border-color: #38bdf8 !important;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4) !important;
 }
 
 .subject-header-row input[type="checkbox"]:checked::after {
-  transform: translateX(16px) !important;
+  transform: translateX(13px) !important;
   background: #ffffff !important;
 }
 
@@ -2410,10 +2580,10 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   background: rgba(56, 189, 248, 0.12) !important;
   border: 1px solid rgba(56, 189, 248, 0.3) !important;
   color: #38bdf8 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.68rem !important;
   font-weight: 600 !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  border-radius: 5px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
 }
@@ -2423,72 +2593,103 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
 }
 
-/* Subject Compact Controls Row (3 Sliders) */
+/* Ultra-Compact Sub-Controls for Precise Straight Alignment */
 .subject-controls-row {
   display: flex !important;
   flex-direction: row !important;
-  gap: 8px !important;
-  margin-top: 4px !important;
-}
-
-.subject-controls-row > div {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
+  gap: 5px !important;
+  margin-top: 1px !important;
   padding: 0 !important;
 }
 
+.subject-controls-row .block,
+.subject-controls-row div[data-testid="block"] {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+}
+
+.subject-controls-row .wrap {
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+}
+
+.subject-controls-row .head {
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.subject-controls-row .range-container {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
 .subject-controls-row label span {
-  font-size: 0.70rem !important;
+  font-size: 0.64rem !important;
   color: var(--text-muted) !important;
   font-weight: 500 !important;
   white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
 }
 
 .subject-controls-row input[type="range"] {
-  height: 4px !important;
+  accent-color: #38bdf8 !important;
+  height: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .subject-controls-row input[type="number"] {
-  font-size: 0.72rem !important;
-  padding: 2px 4px !important;
-  height: 22px !important;
+  font-size: 0.64rem !important;
+  padding: 0 3px !important;
+  height: 16px !important;
   background: rgba(255, 255, 255, 0.05) !important;
-  border-radius: 4px !important;
+  border-radius: 3px !important;
   color: #38bdf8 !important;
   font-weight: 600 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Right Card: Subject Syllabus & Modules Explorer */
+/* ========================================================================== */
+/* SECTION 3: Subject Syllabus & Modules Explorer (Beside Subject Management) */
+/* ========================================================================== */
 .syllabus-badge {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #38bdf8;
   background: rgba(56, 189, 248, 0.12);
   border: 1px solid rgba(56, 189, 248, 0.3);
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 7px;
+  border-radius: 5px;
 }
 
 .syl-tab-pills {
   display: flex !important;
   flex-direction: row !important;
-  gap: 8px !important;
-  margin-bottom: 12px !important;
+  gap: 5px !important;
+  margin-bottom: 6px !important;
 }
 
 .syl-pill-btn {
   flex: 1 !important;
-  background: rgba(16, 24, 40, 0.7) !important;
+  background: rgba(14, 22, 38, 0.7) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: var(--text-secondary) !important;
-  font-size: 0.78rem !important;
+  font-size: 0.72rem !important;
   font-weight: 600 !important;
-  padding: 7px 4px !important;
-  border-radius: 8px !important;
+  padding: 4px 2px !important;
+  border-radius: 6px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   text-align: center !important;
@@ -2501,141 +2702,577 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 }
 
 .syl-active-banner {
-  background: rgba(16, 24, 40, 0.5) !important;
+  background: rgba(14, 22, 38, 0.5) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  border-radius: 8px !important;
-  padding: 8px 12px !important;
-  margin-bottom: 10px !important;
+  border-radius: 6px !important;
+  padding: 4px 7px !important;
+  margin-bottom: 6px !important;
 }
 
 .syl-title-row {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 4px !important;
+  margin-bottom: 1px !important;
 }
 
 .syl-subject-name {
+  font-family: var(--font-display) !important;
+  font-size: 0.78rem !important;
   font-weight: 700 !important;
-  font-size: 0.85rem !important;
   color: #38bdf8 !important;
 }
 
 .syl-tag {
-  font-size: 0.70rem !important;
-  background: rgba(56, 189, 248, 0.15) !important;
-  color: #38bdf8 !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
+  font-size: 0.62rem !important;
   font-weight: 600 !important;
+  color: var(--accent-amber) !important;
+  background: rgba(251, 146, 60, 0.12) !important;
+  border: 1px solid rgba(251, 146, 60, 0.3) !important;
+  padding: 1px 4px !important;
+  border-radius: 4px !important;
 }
 
 .syl-desc {
-  font-size: 0.72rem !important;
+  font-size: 0.66rem !important;
   color: var(--text-muted) !important;
+  line-height: 1.25 !important;
 }
 
-/* 2-Column Grid Layout for 10 Modules */
 .module-checkboxes-viewer .wrap {
   display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 6px 10px !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 4px 6px !important;
+  max-height: 380px !important;
+  overflow-y: auto !important;
 }
 
 .module-checkboxes-viewer label {
+  background: rgba(14, 22, 38, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 6px !important;
+  padding: 3px 5px !important;
+  font-size: 0.70rem !important;
+  color: var(--text-secondary) !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
-  padding: 6px 10px !important;
-  background: rgba(16, 24, 40, 0.6) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 8px !important;
-  font-size: 0.76rem !important;
-  color: var(--text-secondary) !important;
-  transition: all 0.15s ease !important;
-  margin: 0 !important;
+  gap: 4px !important;
+  transition: all 0.2s ease !important;
   cursor: pointer !important;
 }
 
 .module-checkboxes-viewer label:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(56, 189, 248, 0.1) !important;
   border-color: rgba(56, 189, 248, 0.3) !important;
-  color: #ffffff !important;
-}
-
-.module-checkboxes-viewer label:has(input:checked) {
-  background: rgba(14, 165, 233, 0.12) !important;
-  border-color: rgba(56, 189, 248, 0.4) !important;
   color: #38bdf8 !important;
-  font-weight: 500 !important;
 }
 
-/* Bottom Row: Performance Snapshot Card */
-.snapshot-row {
+/* ========================================================================== */
+/* 5. FULL-PAGE DIAGNOSTIC RESULTS (BELOW THE 3 SECTIONS - NO DEAD SPACE!)   */
+/* ========================================================================== */
+.full-page-diag-row {
   width: 100% !important;
   margin-top: 4px !important;
 }
 
-.snapshot-card {
+
+/* Full-Page Study Plan Dashboard Styles */
+.full-study-plan-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: 100% !important;
+  margin-top: 10px !important;
+  animation: fadeIn 0.3s ease-in-out !important;
+}
+
+.plan-status-banner {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.12) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 14px !important;
+  padding: 16px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.plan-status-badge {
+  display: inline-block !important;
+  font-size: 0.70rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  margin-bottom: 4px !important;
+}
+
+.plan-status-title {
+  font-family: var(--font-display) !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+}
+
+.plan-status-sub {
+  font-size: 0.82rem !important;
+  color: #94a3b8 !important;
+  margin-top: 2px !important;
+}
+
+.plan-engine-pill {
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  color: #38bdf8 !important;
+  background: rgba(14, 22, 38, 0.8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  padding: 6px 12px !important;
+  border-radius: 20px !important;
+}
+
+.plan-split-row {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.plan-split-col {
+  flex: 1 1 50% !important;
+  min-width: 0 !important;
+}
+
+.table-responsive {
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.schedule-table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.schedule-table th {
+  background: rgba(14, 22, 38, 0.95) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.schedule-table td {
+  padding: 10px 14px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  font-size: 0.82rem !important;
+  vertical-align: top !important;
+}
+
+.schedule-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.schedule-table tr.is-today td {
+  background: rgba(56, 189, 248, 0.06) !important;
+  border-top: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+
+.schedule-table tr.is-exam td {
+  background: rgba(251, 146, 60, 0.08) !important;
+  border-top: 1px solid rgba(251, 146, 60, 0.35) !important;
+  border-bottom: 1px solid rgba(251, 146, 60, 0.35) !important;
+}
+
+.day-circle {
+  display: inline-block !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+}
+
+.today-badge-chip {
+  background: rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  margin-left: 6px !important;
+}
+
+.session-item {
+  padding: 5px 9px !important;
+  margin-bottom: 6px !important;
+  border-radius: 6px !important;
+  background: rgba(14, 22, 38, 0.6) !important;
+  font-size: 0.80rem !important;
+}
+
+.session-study {
+  border-left: 3px solid #38bdf8 !important;
+}
+
+.session-break {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.72rem !important;
+  border-left: 2px dashed rgba(255, 255, 255, 0.15) !important;
+}
+
+.session-rest {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: #a5b4fc !important;
+  border-left: 3px solid #6366f1 !important;
+}
+
+.session-exam {
+  background: rgba(251, 146, 60, 0.15) !important;
+  color: #fed7aa !important;
+  border-left: 3px solid #fb923c !important;
+  padding: 8px 12px !important;
+  font-size: 0.85rem !important;
+}
+
+.session-time {
+  font-family: var(--font-mono) !important;
+  font-size: 0.72rem !important;
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.1) !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  margin-right: 6px !important;
+}
+
+.session-badge {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  margin-right: 6px !important;
+  text-transform: uppercase !important;
+}
+
+.session-subj {
+  font-weight: 700 !important;
+}
+
+.session-topic {
+  color: #f1f5f9 !important;
+  font-weight: 500 !important;
+}
+
+.session-dur {
+  color: var(--text-muted) !important;
+  font-size: 0.72rem !important;
+  margin-left: 4px !important;
+}
+
+.session-note {
+  font-size: 0.70rem !important;
+  color: var(--text-secondary) !important;
+  margin-top: 3px !important;
+  padding-left: 10px !important;
+}
+
+.time-pill {
+  display: inline-block !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  color: #38bdf8 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+}
+
+.badge-done {
+  color: #34d399 !important;
+  font-size: 0.70rem !important;
+  font-weight: 600 !important;
+  margin-left: 6px !important;
+}
+
+.badge-missed {
+  color: #f87171 !important;
+  font-size: 0.70rem !important;
+  font-weight: 600 !important;
+  margin-left: 6px !important;
+}
+
+.full-page-diag-col {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+.dash-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 14px !important;
+  margin-bottom: 18px !important;
+  width: 100% !important;
+}
+
+.dash-card {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 20px 24px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
-.snapshot-header {
+.dash-card-header {
   display: flex !important;
-  justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 14px !important;
-  padding-bottom: 10px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  gap: 6px !important;
+  margin-bottom: 4px !important;
 }
 
-.snapshot-title {
+.dash-card-k {
+  font-size: 0.70rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.05em !important;
+}
+
+.dash-card-v {
   font-family: var(--font-display) !important;
-  font-size: 0.98rem !important;
+  font-size: 1.45rem !important;
   font-weight: 700 !important;
   color: #ffffff !important;
 }
 
-.snapshot-legend {
+.dash-panel {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: var(--radius-card) !important;
+  padding: 18px 22px !important;
+  margin-bottom: 18px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.hero-coach-panel {
+  background: linear-gradient(135deg, rgba(14, 21, 36, 0.95) 0%, rgba(20, 32, 54, 0.85) 100%) !important;
+  border-left: 4px solid var(--accent-cyan) !important;
+}
+
+.dash-panel-title {
+  font-family: var(--font-display) !important;
+  font-size: 0.96rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
   display: flex !important;
-  gap: 16px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.coach-body-text {
+  font-size: 0.86rem !important;
+  line-height: 1.6 !important;
+  color: var(--text-secondary) !important;
+}
+
+.dash-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 0.82rem !important;
+}
+
+.dash-table th {
+  text-align: left !important;
+  padding: 9px 12px !important;
+  font-size: 0.70rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  color: var(--text-muted) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dash-table td {
+  padding: 11px 12px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  color: var(--text-secondary) !important;
+}
+
+.subject-tag {
+  display: inline-block !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+}
+
+.mastery-badge {
+  display: inline-block !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.priority-pill {
+  display: inline-block !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(251, 146, 60, 0.12) !important;
+  border: 1px solid rgba(251, 146, 60, 0.3) !important;
+  color: #fb923c !important;
+  font-weight: 700 !important;
+}
+
+.skill-bar-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 9px !important;
+}
+
+.skill-bar-lbl {
+  width: 220px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 0.80rem !important;
+  color: var(--text-secondary) !important;
+}
+
+.skill-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+}
+
+.skill-track {
+  flex: 1 !important;
+  height: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+.skill-fill {
+  height: 100% !important;
+  border-radius: 999px !important;
+  transition: width 0.3s ease !important;
+}
+
+.skill-pct {
+  width: 45px !important;
+  text-align: right !important;
+  font-family: var(--font-mono) !important;
   font-size: 0.78rem !important;
   color: var(--text-muted) !important;
 }
 
-.legend-line-blue {
-  color: var(--accent-cyan);
-  font-weight: 800;
-}
-.legend-line-pink {
-  color: var(--accent-rose);
-  font-weight: 800;
+.dash-empty-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: var(--radius-card) !important;
+  padding: 38px 24px !important;
+  text-align: center !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.snapshot-charts-row {
+.empty-icon-wrap {
+  font-size: 32px !important;
+  margin-bottom: 8px !important;
+}
+
+.empty-title {
+  font-family: var(--font-display) !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin-bottom: 4px !important;
+}
+
+.empty-desc {
+  font-size: 0.80rem !important;
+  color: var(--text-muted) !important;
+}
+
+.meta-chips-wrap {
   display: flex !important;
-  flex-direction: row !important;
-  gap: 20px !important;
-  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 6px !important;
 }
 
-.chart-col {
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-  background: rgba(255, 255, 255, 0.015) !important;
-  border: 1px solid rgba(255, 255, 255, 0.04) !important;
-  border-radius: 10px !important;
-  padding: 12px !important;
+.meta-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+}
+
+.dash-clean-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 6px 0 0 0 !important;
+}
+
+.fragile-item {
+  font-size: 0.82rem !important;
+  color: #f87171 !important;
+  margin-bottom: 4px !important;
+}
+
+.fragile-none {
+  font-size: 0.82rem !important;
+  color: #34d399 !important;
+}
+
+.subject-matrix-group {
+  margin-bottom: 16px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.matrix-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.matrix-title {
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+}
+
+.matrix-meta {
+  font-size: 0.74rem !important;
+  color: var(--text-muted) !important;
 }
 
 /* ========================================================================== */
-/* 6. Schedule & Roadmap View Styling (Countdown Calendar & Timeline)         */
+/* 6. Schedule & Roadmap View Styling (Full-Width)                            */
 /* ========================================================================== */
 .schedule-card {
   background: var(--bg-card) !important;
@@ -2653,100 +3290,35 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   font-size: 1.05rem !important;
   font-weight: 700 !important;
   color: #ffffff !important;
+  margin-bottom: 14px !important;
 }
 
-.live-countdown-banner {
+.schedule-meta-bar {
   display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(251, 146, 60, 0.1) 100%) !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  border-radius: 12px !important;
-  padding: 14px 20px !important;
-  margin-bottom: 18px !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
 }
 
-.days-count {
-  font-family: var(--font-display) !important;
-  font-size: 1.05rem !important;
-  font-weight: 700 !important;
-  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
-  color: #ffffff !important;
-  padding: 6px 16px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4) !important;
-}
-
-.mini-cal-weekdays {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  text-align: center !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  color: var(--text-muted) !important;
-  margin-bottom: 8px !important;
-}
-
-.mini-cal-days {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 5px !important;
-  text-align: center !important;
-  margin-bottom: 18px !important;
-}
-
-.mini-cal-days span {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  height: 30px !important;
+.schedule-meta-pill {
+  background: rgba(14, 22, 38, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 6px 14px !important;
+  border-radius: var(--radius-pill) !important;
   font-size: 0.78rem !important;
-  border-radius: 6px !important;
   color: var(--text-secondary) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
-.mini-cal-days span.active-cyan {
-  background: rgba(56, 189, 248, 0.25) !important;
-  border: 1.5px solid #38bdf8 !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5) !important;
-}
-
-.mini-cal-days span.active-blue {
-  background: rgba(251, 146, 60, 0.25) !important;
-  border: 1.5px solid #fb923c !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 10px rgba(251, 146, 60, 0.5) !important;
-}
-
-.timeline-blocks-list {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 14px !important;
-}
-
-.timeline-block-item {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-}
-
-.block-time {
-  font-family: var(--font-mono) !important;
-  font-size: 0.72rem !important;
-  color: var(--text-muted) !important;
-}
-
-.block-pill {
+.study-block {
+  border-radius: 8px !important;
   padding: 10px 14px !important;
-  border-radius: 10px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 3px !important;
+  margin-bottom: 8px !important;
   font-size: 0.82rem !important;
-  font-weight: 600 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
 }
 
 .block-blue {
@@ -2767,7 +3339,6 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   opacity: 0.8 !important;
 }
 
-/* Calendar Timeline Grid */
 .cal-grid {
   display: grid !important;
   grid-template-columns: repeat(7, 1fr) !important;
@@ -2831,7 +3402,7 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
 }
 
 /* ========================================================================== */
-/* 7. Quiz Arena Overhaul (MCQ Radio Cards, Scorecards & Explanations)        */
+/* 7. Quiz Arena (Full-Width Multiple Choice System)                          */
 /* ========================================================================== */
 .quiz-subject-header-row {
   margin-bottom: 12px !important;
@@ -2865,7 +3436,6 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
 }
 
-/* MCQ Question Radio Cards */
 .mcq-card-radio {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-card) !important;
@@ -2904,460 +3474,35 @@ footer, .gradio-footer, .built-with, div[data-testid="block-footer"] {
   border-radius: 10px !important;
   font-size: 0.88rem !important;
   color: var(--text-secondary) !important;
+  transition: all 0.2s ease !important;
   cursor: pointer !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .mcq-card-radio label:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(56, 189, 248, 0.35) !important;
-  color: #ffffff !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
 }
 
-.mcq-card-radio label:has(input:checked) {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0.04) 100%) !important;
-  border: 1px solid rgba(56, 189, 248, 0.6) !important;
-  color: #38bdf8 !important;
-  font-weight: 600 !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.18) !important;
-}
-
-/* Quiz Scorecard Styling */
 .quiz-scorecard {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 22px 26px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  margin-bottom: 22px !important;
+  border-radius: 14px !important;
+  padding: 18px 22px !important;
+  margin-bottom: 16px !important;
 }
 
 .scorecard-header {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 16px !important;
-  padding-bottom: 12px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-}
-
-.scorecard-badge {
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  color: var(--text-muted) !important;
+  margin-bottom: 14px !important;
 }
 
 .scorecard-marks {
   font-family: var(--font-display) !important;
   font-size: 1.6rem !important;
   font-weight: 800 !important;
-  color: #ffffff !important;
-}
-
-.grade-badge {
-  padding: 6px 14px !important;
-  border-radius: 8px !important;
-  font-family: var(--font-display) !important;
-  font-size: 1rem !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.04em !important;
-}
-
-.grade-a {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border: 1.5px solid var(--accent-emerald) !important;
-  color: #34d399 !important;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3) !important;
-}
-
-.grade-b {
-  background: rgba(56, 189, 248, 0.15) !important;
-  border: 1.5px solid var(--accent-cyan) !important;
   color: #38bdf8 !important;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
-}
-
-.grade-c {
-  background: rgba(251, 146, 60, 0.15) !important;
-  border: 1.5px solid var(--accent-amber) !important;
-  color: #fb923c !important;
-  box-shadow: 0 0 12px rgba(251, 146, 60, 0.3) !important;
-}
-
-.grade-d, .grade-f {
-  background: rgba(244, 114, 182, 0.15) !important;
-  border: 1.5px solid var(--accent-rose) !important;
-  color: #f472b6 !important;
-  box-shadow: 0 0 12px rgba(244, 114, 182, 0.3) !important;
-}
-
-.scorecard-stats-grid {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 12px !important;
-}
-
-.stat-tile {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid rgba(255, 255, 255, 0.04) !important;
-  border-radius: 8px !important;
-  padding: 10px 14px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-}
-
-.stat-label {
-  font-size: 0.70rem !important;
-  color: var(--text-muted) !important;
-  text-transform: uppercase !important;
-}
-
-.stat-val {
-  font-family: var(--font-display) !important;
-  font-size: 1.15rem !important;
-  font-weight: 700 !important;
-  color: #ffffff !important;
-}
-
-/* ========================================================================== */
-/* 8. Diagnostic Panels, Bento Stat Cards & Competency Matrix                 */
-/* ========================================================================== */
-.dash-cards-grid {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 16px !important;
-  margin-bottom: 22px !important;
-}
-
-.dash-card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: 12px !important;
-  padding: 16px 18px !important;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
-}
-
-.dash-card-header {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin-bottom: 6px !important;
-}
-
-.dash-card-k {
-  font-size: 0.72rem !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  color: var(--text-muted) !important;
-  letter-spacing: 0.05em !important;
-}
-
-.dash-card-v {
-  font-family: var(--font-display) !important;
-  font-size: 1.45rem !important;
-  font-weight: 700 !important;
-  color: #ffffff !important;
-}
-
-.dash-panel {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 20px 24px !important;
-  margin-bottom: 20px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
-}
-
-.hero-coach-panel {
-  background: linear-gradient(135deg, rgba(14, 21, 36, 0.95) 0%, rgba(20, 32, 54, 0.85) 100%) !important;
-  border-left: 4px solid var(--accent-cyan) !important;
-}
-
-.dash-panel-title {
-  font-family: var(--font-display) !important;
-  font-size: 0.98rem !important;
-  font-weight: 700 !important;
-  color: #ffffff !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin-bottom: 14px !important;
-}
-
-.coach-body-text {
-  font-size: 0.88rem !important;
-  line-height: 1.65 !important;
-  color: var(--text-secondary) !important;
-}
-
-/* Tables */
-.dash-table {
-  width: 100% !important;
-  border-collapse: collapse !important;
-  font-size: 0.82rem !important;
-}
-
-.dash-table th {
-  text-align: left !important;
-  padding: 9px 12px !important;
-  font-size: 0.70rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  color: var(--text-muted) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-.dash-table td {
-  padding: 11px 12px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
-  color: var(--text-secondary) !important;
-}
-
-.subject-tag {
-  display: inline-block !important;
-  padding: 3px 8px !important;
-  border-radius: 6px !important;
-  font-size: 0.74rem !important;
-  font-weight: 600 !important;
-}
-
-.mastery-badge {
-  display: inline-block !important;
-  padding: 2px 8px !important;
-  border-radius: 6px !important;
-  background: rgba(56, 189, 248, 0.12) !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  color: #38bdf8 !important;
-  font-weight: 700 !important;
-}
-
-.priority-pill {
-  display: inline-block !important;
-  padding: 2px 8px !important;
-  border-radius: 6px !important;
-  background: rgba(251, 146, 60, 0.12) !important;
-  border: 1px solid rgba(251, 146, 60, 0.3) !important;
-  color: #fb923c !important;
-  font-weight: 700 !important;
-}
-
-/* Skill Progress Bars */
-.skill-bar-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  margin-bottom: 9px !important;
-}
-
-.skill-bar-lbl {
-  width: 220px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  font-size: 0.80rem !important;
-  color: var(--text-secondary) !important;
-}
-
-.skill-dot {
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-}
-
-.skill-track {
-  flex: 1 !important;
-  height: 6px !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-radius: 999px !important;
-  overflow: hidden !important;
-}
-
-.skill-fill {
-  height: 100% !important;
-  border-radius: 999px !important;
-  transition: width 0.3s ease !important;
-}
-
-.skill-pct {
-  width: 45px !important;
-  text-align: right !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.78rem !important;
-  color: var(--text-muted) !important;
-}
-
-.dash-empty-card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-card) !important;
-  border-radius: var(--radius-card) !important;
-  padding: 38px 24px !important;
-  text-align: center !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
-}
-
-.empty-icon-wrap {
-  font-size: 32px !important;
-  margin-bottom: 8px !important;
-}
-
-.empty-title {
-  font-family: var(--font-display) !important;
-  font-size: 1rem !important;
-  font-weight: 700 !important;
-  color: #ffffff !important;
-  margin-bottom: 4px !important;
-}
-
-.empty-desc {
-  font-size: 0.80rem !important;
-  color: var(--text-muted) !important;
-}
-
-/* ========================================================================== */
-/* 9. Metacognitive Calibration & Competency Matrix Headers                   */
-/* ========================================================================== */
-.meta-chips-wrap {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  margin-top: 6px !important;
-}
-
-.meta-chip {
-  display: inline-flex !important;
-  align-items: center !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
-  font-size: 0.76rem !important;
-  font-weight: 600 !important;
-}
-
-.dash-clean-list {
-  list-style: none !important;
-  padding: 0 !important;
-  margin: 6px 0 0 0 !important;
-}
-
-.fragile-item {
-  font-size: 0.82rem !important;
-  color: #f87171 !important;
-  margin-bottom: 4px !important;
-}
-
-.fragile-none {
-  font-size: 0.82rem !important;
-  color: #34d399 !important;
-}
-
-.subject-matrix-group {
-  margin-bottom: 16px !important;
-  padding-bottom: 12px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
-}
-
-.matrix-head {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin-bottom: 8px !important;
-}
-
-.matrix-title {
-  font-weight: 700 !important;
-  font-size: 0.88rem !important;
-}
-
-.matrix-meta {
-  font-size: 0.74rem !important;
-  color: var(--text-muted) !important;
-}
-
-/* ========================================================================== */
-/* 10. Agent Telemetry Terminal Console                                       */
-/* ========================================================================== */
-.terminal-wrap {
-  background: #080c14 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 12px !important;
-  overflow: hidden !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-}
-
-.terminal-top-bar {
-  background: #0e1524 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  padding: 10px 16px !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-}
-
-.terminal-badges-row {
-  display: flex !important;
-  gap: 8px !important;
-}
-
-.term-pill {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 6px !important;
-  padding: 3px 8px !important;
-  font-size: 0.70rem !important;
-  color: var(--text-secondary) !important;
-}
-
-.terminal-sys-title {
-  font-family: var(--font-mono) !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  color: var(--text-muted) !important;
-  letter-spacing: 0.08em !important;
-}
-
-.terminal-screen {
-  padding: 12px 16px !important;
-  max-height: 360px !important;
-  overflow-y: auto !important;
-}
-
-.terminal-scroller {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-
-.tr-row {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 10px !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.76rem !important;
-}
-
-.tr-ts {
-  color: var(--text-muted) !important;
-  flex-shrink: 0 !important;
-}
-
-.tr-ag {
-  color: var(--accent-cyan) !important;
-  font-weight: 600 !important;
-  flex-shrink: 0 !important;
-}
-
-.tr-kd {
-  font-size: 0.68rem !important;
-  padding: 1px 5px !important;
-  border-radius: 4px !important;
-  flex-shrink: 0 !important;
-}
-
-.tr-tx {
-  color: var(--text-secondary) !important;
-  word-break: break-word !important;
 }
 """
 
@@ -3780,7 +3925,7 @@ def refresh_trace(orch):
 with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     orch_state = gr.State(None)
 
-    # Hero Banner exactly matching Image 1 with Title, 3 Crests & 4 Badges (Zero Watermarks, No floating text)
+    # 1. Top Hero Banner (Full-Width Executive Dissected Header)
     gr.HTML("""
     <div class='hero-image2'>
       <div class='hero-title-group'>
@@ -3831,330 +3976,237 @@ with gr.Blocks(theme=THEME, css=CSS, title="studyplanner.ai/dashboard") as demo:
     </div>
     """)
 
-    # MAIN MASTER CONTAINER: Left Sidebar + Right Dynamic Main View
-    with gr.Row(elem_classes=["dash-main-container"]):
-        # =====================================================================
-        # LEFT COLUMN: Sidebar Navigation + Diagnostics Inputs (~28% width)
-        # =====================================================================
-        with gr.Column(scale=3, min_width=290, elem_classes=["left-diag-column"]):
-            # 1. Sidebar Navigation Menu matching Image 1
-            with gr.Group(elem_classes=["sidebar-nav-container"]):
-                gr.HTML("<div class='sidebar-nav-title'>Navigation Menu</div>")
-                nav_choice = gr.Radio(
-                    choices=["⚙️ Setup & Diagnostics", "📅 Schedule & Roadmap", "⚡ Quiz Arena"],
-                    value="⚙️ Setup & Diagnostics",
-                    show_label=False,
-                    elem_classes=["sidebar-nav-radio"]
-                )
+    # 2. Full-Width Navigation Bar
+    with gr.Row(elem_classes=["master-nav-row"]):
+        nav_choice = gr.Radio(
+            choices=["⚙️ Setup & Diagnostics", "📅 Schedule & Roadmap", "⚡ Quiz Arena"],
+            value="⚙️ Setup & Diagnostics",
+            show_label=False,
+            elem_classes=["master-nav-radio"]
+        )
 
-            # 2. Portfolio & Plan Diagnostics Card (Student Profile, Exam Date, Sliders, File Upload, Build Button)
-            with gr.Group(elem_classes=["diagnostics-card"]):
-                gr.HTML("""
-                <div class='card-header-bar'>
-                    <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
-                    <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
-                        <path d='M0 20C20 20 35 10 55 14C75 18 85 4 100 2' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round'/>
-                    </svg>
-                </div>
-                """)
-                s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
-                s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
-                s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
-                s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
-                s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
-                s_file = gr.File(label="📄 Upload Syllabus / Notes (Optional)", file_types=[".txt", ".pdf", ".md", ".json", ".docx"], file_count="single", elem_classes=["file-upload-box"])
-                build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg", elem_classes=["build-plan-button"])
-                build_status = gr.Markdown()
+    # 3. VIEW 1: Setup & Diagnostics (Active by default)
+    with gr.Column(visible=True, elem_classes=["setup-view-col"]) as setup_view:
+        gr.HTML("<div class='dash-main-title'>Plan Setup and Diagnostics</div>")
 
-        # =====================================================================
-        # RIGHT COLUMN: Dynamic Main Content Area (~72% width)
-        # =====================================================================
-        with gr.Column(scale=7, elem_classes=["right-main-column"]):
-            # -----------------------------------------------------------------
-            # VIEW 1: Setup & Diagnostics (Active by default)
-            # -----------------------------------------------------------------
-            with gr.Column(visible=True) as setup_view:
-                gr.HTML("""
-                <div class='dash-main-title'>Plan Setup and Diagnostics</div>
-                """)
+        # THE THREE SECTIONS SIDE-BY-SIDE IN ONE ROW (FULL-PAGE WIDTH: SETUP, SUBJECTS, SYLLABUS)
+        with gr.Row(elem_classes=["three-sections-row"], equal_height=True):
+            # SECTION 1: Setup & Diagnostics Card (Left)
+            with gr.Column(scale=3, min_width=240, elem_classes=["section-diag-col"]):
+                with gr.Group(elem_classes=["diagnostics-card"]):
+                    gr.HTML("""
+                    <div class='card-header-bar'>
+                        <div class='card-header-title'>Portfolio &amp; Plan Diagnostics</div>
+                        <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                            <path d='M0 20C20 20 35 10 55 14C75 18 85 4 100 2' stroke='#38bdf8' stroke-width='2.5' stroke-linecap='round'/>
+                        </svg>
+                    </div>
+                    """)
+                    s_name = gr.Textbox(label="Student Profile", value="Alex", elem_classes=["profile-input-box"])
+                    s_exam = gr.Textbox(label="Target Exam", value="Nov 01, 2026", elem_classes=["exam-input-box"], placeholder="Nov 01, 2026 or 2026-11-01")
+                    s_target = gr.Slider(50, 100, value=85, step=1, label="Target Mastery Score (%)")
+                    s_hours = gr.Slider(0.75, 10, value=3, step=0.25, label="Daily Study Capacity (Hours)")
+                    s_start = gr.Slider(5, 21, value=17, step=1, label="Daily Study Start Hour (24h clock)")
+                    s_file = gr.File(label="📄 Upload Syllabus / Notes (Optional)", file_types=[".txt", ".pdf", ".md", ".json", ".docx"], file_count="single", elem_classes=["file-upload-box"])
+                    build_btn = gr.Button("🚀 Diagnose & Build My Plan", variant="primary", size="lg", elem_classes=["build-plan-button"])
+                    build_status = gr.Markdown()
 
-                # TOP ROW: Subject Management (Left) + Subject Syllabus Viewer (Right)
-                with gr.Row(elem_classes=["top-cards-row"]):
-                    # Top-Left Card: Subject Management (50% equal balance)
-                    with gr.Column(scale=1, min_width=380, elem_classes=["subject-portfolio-col"]):
-                        with gr.Group(elem_classes=["portfolio-group-card"]):
-                            gr.HTML("""
-                            <div class='card-header-bar'>
-                                <div class='card-header-title'>Subject Management <span class='info-icon' title='Select subjects, customize weight/confidence/score and click Syllabus to view/select modules'>ⓘ</span></div>
-                                <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
-                                    <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
-                                    <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
-                                </svg>
-                            </div>
-                            """)
-                            sub_components = {}
-                            syl_btns = {}
-                            for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
-                                with gr.Group(elem_classes=["subject-item-box"]):
-                                    with gr.Row(elem_classes=["subject-header-row"]):
-                                        c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
-                                        syl_btn = gr.Button("📖 Syllabus", size="sm", elem_classes=["syl-switch-btn"], scale=1)
-                                    with gr.Row(elem_classes=["subject-controls-row"]):
-                                        c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=1)
-                                        c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
-                                        c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
-                                sub_components[sname] = (c_inc, c_conf, c_score, c_wt)
-                                syl_btns[sname] = syl_btn
+            # SECTION 2: Subject Management Card (Middle)
+            with gr.Column(scale=4, min_width=260, elem_classes=["section-subjects-col"]):
+                with gr.Group(elem_classes=["portfolio-group-card"]):
+                    gr.HTML("""
+                    <div class='card-header-bar'>
+                        <div class='card-header-title'>Subject Management <span class='info-icon' title='Select subjects, customize weight/confidence/score and click Syllabus to view/select modules'>ⓘ</span></div>
+                        <svg width='90' height='26' viewBox='0 0 100 26' fill='none'>
+                            <path d='M0 18C20 18 40 6 60 12C80 18 88 4 100 2' stroke='#fb923c' stroke-width='2.5' stroke-linecap='round'/>
+                            <circle cx='88' cy='4' r='3.5' fill='#fb923c' stroke='#131b2e' stroke-width='1.5'/>
+                        </svg>
+                    </div>
+                    """)
+                    sub_components = {}
+                    syl_btns = {}
+                    for sname, (inc, conf, score, wt) in DEMO_DEFAULTS.items():
+                        with gr.Group(elem_classes=["subject-item-box"]):
+                            with gr.Row(elem_classes=["subject-header-row"]):
+                                c_inc = gr.Checkbox(value=inc, label=f"{SUBJECT_ICONS.get(sname, '📚')} {sname}", scale=3)
+                                syl_btn = gr.Button("📖 Syllabus", size="sm", elem_classes=["syl-switch-btn"], scale=1)
+                            with gr.Row(elem_classes=["subject-controls-row"]):
+                                c_wt = gr.Slider(1, 5, value=wt, step=1, label="Weight (1-5)", scale=1)
+                                c_conf = gr.Slider(1, 5, value=conf, step=1, label="Confidence (1-5)", scale=1)
+                                c_score = gr.Slider(0, 100, value=score, step=1, label="Last Quiz (%)", scale=1)
+                        sub_components[sname] = (c_inc, c_conf, c_score, c_wt)
+                        syl_btns[sname] = syl_btn
 
-                    # Top-Right Card: Subject Syllabus & Curriculum Explorer (50% equal balance)
-                    with gr.Column(scale=1, min_width=380, elem_classes=["syllabus-panel-col"]):
-                        with gr.Group(elem_classes=["syllabus-viewer-card"]):
-                            gr.HTML("""
-                            <div class='card-header-bar'>
-                                <div class='card-header-title'>Subject Syllabus &amp; Modules <span class='info-icon' title='Syllabus & modules for selected subject. Check/uncheck modules to customize study plan & quizzes.'>ⓘ</span></div>
-                                <div class='syllabus-badge'>Curriculum Explorer</div>
-                            </div>
-                            """)
-                            with gr.Row(elem_classes=["syl-tab-pills"]):
-                                pill_ps = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["syl-pill-btn"])
-                                pill_dsa = gr.Button("💻 DSA C++", size="sm", elem_classes=["syl-pill-btn"])
-                                pill_ai = gr.Button("🧠 AI", size="sm", elem_classes=["syl-pill-btn"])
-                                pill_dbms = gr.Button("🗄️ DBMS", size="sm", elem_classes=["syl-pill-btn"])
+            # SECTION 3: Subject Syllabus & Modules Explorer (Right - BESIDE Subject Management!)
+            with gr.Column(scale=4, min_width=260, elem_classes=["section-syllabus-col"]):
+                with gr.Group(elem_classes=["syllabus-viewer-card"]):
+                    gr.HTML("""
+                    <div class='card-header-bar'>
+                        <div class='card-header-title'>Subject Syllabus &amp; Modules <span class='info-icon' title='Syllabus & modules for selected subject. Check/uncheck modules to customize study plan & quizzes.'>ⓘ</span></div>
+                        <div class='syllabus-badge'>Curriculum Explorer</div>
+                    </div>
+                    """)
+                    with gr.Row(elem_classes=["syl-tab-pills"]):
+                        pill_ps = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["syl-pill-btn"])
+                        pill_dsa = gr.Button("💻 DSA C++", size="sm", elem_classes=["syl-pill-btn"])
+                        pill_ai = gr.Button("🧠 AI", size="sm", elem_classes=["syl-pill-btn"])
+                        pill_dbms = gr.Button("🗄️ DBMS", size="sm", elem_classes=["syl-pill-btn"])
 
-                            syl_boxes = []
-                            c_mods_dict = {}
+                    syl_boxes = []
+                    c_mods_dict = {}
 
-                            # 1. Probability and Statistics (Maths - Default visible)
-                            with gr.Column(visible=True, elem_classes=["syl-content-box"]) as box_ps:
-                                gr.HTML("""
-                                <div class='syl-active-banner'>
-                                    <div class='syl-title-row'>
-                                        <span class='syl-subject-name'>📊 Probability and Statistics Syllabus (Maths)</span>
-                                        <span class='syl-tag'>10 Core Modules</span>
-                                    </div>
-                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
-                                </div>
-                                """)
-                                c_mods_ps = gr.CheckboxGroup(
-                                    choices=list(CURRICULUM["Probability and Statistics"].keys()),
-                                    value=list(CURRICULUM["Probability and Statistics"].keys()),
-                                    label="Select Modules for Study Plan & Quizzes:",
-                                    elem_classes=["module-checkboxes-viewer"]
-                                )
-                                c_mods_dict["Probability and Statistics"] = c_mods_ps
-                            syl_boxes.append(box_ps)
-
-                            # 2. DSA C++ (Hidden by default)
-                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dsa:
-                                gr.HTML("""
-                                <div class='syl-active-banner'>
-                                    <div class='syl-title-row'>
-                                        <span class='syl-subject-name'>💻 Data Structures &amp; Algorithms (DSA C++) Syllabus</span>
-                                        <span class='syl-tag'>10 Core Modules</span>
-                                    </div>
-                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
-                                </div>
-                                """)
-                                c_mods_dsa = gr.CheckboxGroup(
-                                    choices=list(CURRICULUM["DSA C++"].keys()),
-                                    value=list(CURRICULUM["DSA C++"].keys()),
-                                    label="Select Modules for Study Plan & Quizzes:",
-                                    elem_classes=["module-checkboxes-viewer"]
-                                )
-                                c_mods_dict["DSA C++"] = c_mods_dsa
-                            syl_boxes.append(box_dsa)
-
-                            # 3. Fundamentals of Artificial Intelligence (Hidden by default)
-                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_ai:
-                                gr.HTML("""
-                                <div class='syl-active-banner'>
-                                    <div class='syl-title-row'>
-                                        <span class='syl-subject-name'>🧠 Fundamentals of Artificial Intelligence Syllabus</span>
-                                        <span class='syl-tag'>10 Core Modules</span>
-                                    </div>
-                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
-                                </div>
-                                """)
-                                c_mods_ai = gr.CheckboxGroup(
-                                    choices=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
-                                    value=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
-                                    label="Select Modules for Study Plan & Quizzes:",
-                                    elem_classes=["module-checkboxes-viewer"]
-                                )
-                                c_mods_dict["Fundamentals of Artificial Intelligence"] = c_mods_ai
-                            syl_boxes.append(box_ai)
-
-                            # 4. Advanced DBMS (Hidden by default)
-                            with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dbms:
-                                gr.HTML("""
-                                <div class='syl-active-banner'>
-                                    <div class='syl-title-row'>
-                                        <span class='syl-subject-name'>🗄️ Advanced DBMS Syllabus</span>
-                                        <span class='syl-tag'>10 Core Modules</span>
-                                    </div>
-                                    <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
-                                </div>
-                                """)
-                                c_mods_dbms = gr.CheckboxGroup(
-                                    choices=list(CURRICULUM["Advanced DBMS"].keys()),
-                                    value=list(CURRICULUM["Advanced DBMS"].keys()),
-                                    label="Select Modules for Study Plan & Quizzes:",
-                                    elem_classes=["module-checkboxes-viewer"]
-                                )
-                                c_mods_dict["Advanced DBMS"] = c_mods_dbms
-                            syl_boxes.append(box_dbms)
-
-                            # Assemble subject_inputs for build_plan in exact signature: [inc, conf, score, wt, chosen_mods]
-                            subject_inputs: List[Any] = []
-                            for sname in DEMO_DEFAULTS.keys():
-                                c_inc, c_conf, c_score, c_wt = sub_components[sname]
-                                c_mods = c_mods_dict[sname]
-                                subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
-
-                # BOTTOM ROW: Performance Snapshot (spans full width under Subject Management & Schedule Overview)
-                with gr.Row(elem_classes=["snapshot-row"]):
-                    with gr.Column(scale=1):
+                    # 1. Probability and Statistics (Maths - Default visible)
+                    with gr.Column(visible=True, elem_classes=["syl-content-box"]) as box_ps:
                         gr.HTML("""
-                        <div class='snapshot-card'>
-                          <div class='snapshot-header'>
-                            <div class='snapshot-title'>Performance Snapshot</div>
-                            <div class='snapshot-legend'>
-                              <span><span class='legend-line-blue'>&mdash;</span> Domains</span>
-                              <span><span class='legend-line-pink'>&mdash;</span> DSA C++</span>
+                        <div class='syl-active-banner'>
+                            <div class='syl-title-row'>
+                                <span class='syl-subject-name'>📊 Probability and Statistics Syllabus (Maths)</span>
+                                <span class='syl-tag'>10 Core Modules</span>
                             </div>
-                          </div>
-                          <div class='snapshot-charts-row'>
-                            <!-- Left: Smooth Blue Area Curve -->
-                            <div class='chart-col'>
-                              <svg width="100%" height="90" viewBox="0 0 130 90" fill="none">
-                                <defs>
-                                  <linearGradient id="areaGradBlue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
-                                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
-                                  </linearGradient>
-                                </defs>
-                                <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45L130 90L0 90Z" fill="url(#areaGradBlue)"/>
-                                <path d="M0 75C20 75 35 60 55 25C75 0 95 65 110 50C120 40 125 45 130 45" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
-                              </svg>
-                            </div>
-
-                            <!-- Center: Multi-line chart (Pink & Copper curves with axes) -->
-                            <div class='chart-col'>
-                              <svg width="100%" height="90" viewBox="0 0 180 90" fill="none">
-                                <defs>
-                                  <linearGradient id="gradPink" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
-                                    <stop offset="100%" stop-color="#f472b6" stop-opacity="0.0"/>
-                                  </linearGradient>
-                                </defs>
-                                <line x1="20" y1="15" x2="175" y2="15" stroke="rgba(255,255,255,0.06)"/>
-                                <line x1="20" y1="45" x2="175" y2="45" stroke="rgba(255,255,255,0.06)"/>
-                                <line x1="20" y1="75" x2="175" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                                <text x="5" y="18" fill="#64748b" font-size="8">40</text>
-                                <text x="5" y="48" fill="#64748b" font-size="8">20</text>
-                                <text x="5" y="78" fill="#64748b" font-size="8">0</text>
-                                <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18L170 75Z" fill="url(#gradPink)"/>
-                                <path d="M25 75C55 70 70 65 95 50C120 35 140 38 170 18" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M25 72C50 68 75 75 105 52C130 35 150 48 170 28" stroke="#fb923c" stroke-width="2" stroke-linecap="round"/>
-                                <text x="25" y="87" fill="#64748b" font-size="7">Jan</text>
-                                <text x="60" y="87" fill="#64748b" font-size="7">Feb</text>
-                                <text x="95" y="87" fill="#64748b" font-size="7">Mar</text>
-                                <text x="130" y="87" fill="#64748b" font-size="7">Apr</text>
-                                <text x="160" y="87" fill="#64748b" font-size="7">May</text>
-                              </svg>
-                            </div>
-
-                            <!-- Right: Mini Bar Chart (Blue & Pink columns) -->
-                            <div class='chart-col'>
-                              <svg width="100%" height="90" viewBox="0 0 120 90" fill="none">
-                                <line x1="5" y1="75" x2="115" y2="75" stroke="rgba(255,255,255,0.08)"/>
-                                <rect x="15" y="52" width="10" height="23" rx="2" fill="#38bdf8"/>
-                                <rect x="30" y="46" width="10" height="29" rx="2" fill="#f472b6"/>
-                                <rect x="52" y="32" width="10" height="43" rx="2" fill="#38bdf8"/>
-                                <rect x="67" y="24" width="10" height="51" rx="2" fill="#38bdf8"/>
-                                <rect x="88" y="20" width="10" height="55" rx="2" fill="#38bdf8"/>
-                                <rect x="103" y="36" width="10" height="39" rx="2" fill="#f472b6"/>
-                                <text x="16" y="86" fill="#64748b" font-size="7">P&amp;S</text>
-                                <text x="54" y="86" fill="#64748b" font-size="7">DSA</text>
-                                <text x="76" y="86" fill="#64748b" font-size="7">AI</text>
-                                <text x="104" y="86" fill="#64748b" font-size="7">DBMS</text>
-                              </svg>
-                            </div>
-                          </div>
+                            <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
                         </div>
                         """)
+                        c_mods_ps = gr.CheckboxGroup(
+                            choices=list(CURRICULUM["Probability and Statistics"].keys()),
+                            value=list(CURRICULUM["Probability and Statistics"].keys()),
+                            label="Select Modules for Study Plan & Quizzes:",
+                            elem_classes=["module-checkboxes-viewer"]
+                        )
+                        c_mods_dict["Probability and Statistics"] = c_mods_ps
+                    syl_boxes.append(box_ps)
 
-                # Diagnostic Output Block when Plan is Synthesized (Bento Cards + Coach Brief + Priority Need Table)
+                    # 2. DSA C++
+                    with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dsa:
+                        gr.HTML("""
+                        <div class='syl-active-banner'>
+                            <div class='syl-title-row'>
+                                <span class='syl-subject-name'>💻 Data Structures &amp; Algorithms (DSA C++) Syllabus</span>
+                                <span class='syl-tag'>10 Core Modules</span>
+                            </div>
+                            <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                        </div>
+                        """)
+                        c_mods_dsa = gr.CheckboxGroup(
+                            choices=list(CURRICULUM["DSA C++"].keys()),
+                            value=list(CURRICULUM["DSA C++"].keys()),
+                            label="Select Modules for Study Plan & Quizzes:",
+                            elem_classes=["module-checkboxes-viewer"]
+                        )
+                        c_mods_dict["DSA C++"] = c_mods_dsa
+                    syl_boxes.append(box_dsa)
+
+                    # 3. Fundamentals of Artificial Intelligence
+                    with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_ai:
+                        gr.HTML("""
+                        <div class='syl-active-banner'>
+                            <div class='syl-title-row'>
+                                <span class='syl-subject-name'>🧠 Fundamentals of Artificial Intelligence Syllabus</span>
+                                <span class='syl-tag'>10 Core Modules</span>
+                            </div>
+                            <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                        </div>
+                        """)
+                        c_mods_ai = gr.CheckboxGroup(
+                            choices=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
+                            value=list(CURRICULUM["Fundamentals of Artificial Intelligence"].keys()),
+                            label="Select Modules for Study Plan & Quizzes:",
+                            elem_classes=["module-checkboxes-viewer"]
+                        )
+                        c_mods_dict["Fundamentals of Artificial Intelligence"] = c_mods_ai
+                    syl_boxes.append(box_ai)
+
+                    # 4. Advanced DBMS
+                    with gr.Column(visible=False, elem_classes=["syl-content-box"]) as box_dbms:
+                        gr.HTML("""
+                        <div class='syl-active-banner'>
+                            <div class='syl-title-row'>
+                                <span class='syl-subject-name'>🗄️ Advanced DBMS Syllabus</span>
+                                <span class='syl-tag'>10 Core Modules</span>
+                            </div>
+                            <div class='syl-desc'>Curriculum for B.Tech Term 1. All modules selected by default for comprehensive coverage:</div>
+                        </div>
+                        """)
+                        c_mods_dbms = gr.CheckboxGroup(
+                            choices=list(CURRICULUM["Advanced DBMS"].keys()),
+                            value=list(CURRICULUM["Advanced DBMS"].keys()),
+                            label="Select Modules for Study Plan & Quizzes:",
+                            elem_classes=["module-checkboxes-viewer"]
+                        )
+                        c_mods_dict["Advanced DBMS"] = c_mods_dbms
+                    syl_boxes.append(box_dbms)
+
+                    # Assemble subject_inputs for build_plan
+                    subject_inputs: List[Any] = []
+                    for sname in DEMO_DEFAULTS.keys():
+                        c_inc, c_conf, c_score, c_wt = sub_components[sname]
+                        c_mods = c_mods_dict[sname]
+                        subject_inputs += [c_inc, c_conf, c_score, c_wt, c_mods]
+
+        # FULL-PAGE STUDY PLAN & DIAGNOSTIC RESULTS (BELOW THE THREE SECTIONS: SETUP, SUBJECTS, SYLLABUS)
+        with gr.Row(elem_classes=["full-page-diag-row"]):
+            with gr.Column(scale=1, min_width=0, elem_classes=["full-page-diag-col"]):
                 diag_html = gr.HTML(EMPTY)
 
-            # -----------------------------------------------------------------
-            # VIEW 2: Schedule & Roadmap
-            # -----------------------------------------------------------------
-            with gr.Column(visible=False) as roadmap_view:
-                gr.HTML("""
-                <div class='dash-main-title'>📅 Adaptive Schedule &amp; Roadmap</div>
-                """)
-                with gr.Row(elem_classes=["roadmap-schedule-overview-row"]):
-                    with gr.Column(scale=1):
-                        schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
-                summary_html = gr.HTML(EMPTY)
-                with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
-                    with gr.Row():
-                        a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
-                        a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
-                        a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
-                    a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. college lab exams, caught a fever, or need more review")
-                    with gr.Row():
-                        adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
-                        done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
-                    adapt_msg = gr.Markdown()
-                timeline_html = gr.HTML(EMPTY)
-                horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
-                table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the Setup section._")
+    # 4. VIEW 2: Schedule & Roadmap
+    with gr.Column(visible=False, elem_classes=["roadmap-view-col"]) as roadmap_view:
+        gr.HTML("<div class='dash-main-title'>📅 Adaptive Schedule &amp; Roadmap</div>")
+        with gr.Row(elem_classes=["roadmap-schedule-overview-row"]):
+            with gr.Column(scale=1):
+                schedule_overview_html = gr.HTML(render_mini_calendar("Nov 01, 2026"))
+        summary_html = gr.HTML(EMPTY)
+        with gr.Accordion("⚡ Life Happened? Rebalance the Plan", open=True):
+            with gr.Row():
+                a_missed = gr.Slider(0, 14, value=0, step=1, label="Days Missed / Lost")
+                a_fatigue = gr.Slider(1, 5, value=2, step=1, label="Current Fatigue Level (1 Fresh &rarr; 5 Exhausted)")
+                a_hours = gr.Slider(0, 10, value=0, step=0.25, label="Updated Daily Hours (0 retains current capacity)")
+            a_note = gr.Textbox(label="Context / Circumstance (Optional)", placeholder="e.g. college lab exams, caught a fever, or need more review")
+            with gr.Row():
+                adapt_btn = gr.Button("⚡ Adapt & Rebalance Schedule", variant="primary")
+                done_btn = gr.Button("✅ Complete Today's Plan & Advance Cursor")
+            adapt_msg = gr.Markdown()
+        timeline_html = gr.HTML(EMPTY)
+        horizon = gr.Slider(7, 30, value=14, step=1, label="Timeline Horizon (Days shown in detailed breakdown)")
+        table_md = gr.Markdown("_No study plan generated yet. Synthesize your plan in the Setup section._")
 
-            # -----------------------------------------------------------------
-            # VIEW 3: Quiz Arena
-            # -----------------------------------------------------------------
-            with gr.Column(visible=False) as quiz_view:
-                gr.HTML("""
-                <div class='dash-main-title'>⚡ Cognitive Quiz Arena (Multiple Choice Format)</div>
-                """)
+    # 5. VIEW 3: Quiz Arena
+    with gr.Column(visible=False, elem_classes=["quiz-view-col"]) as quiz_view:
+        gr.HTML("<div class='dash-main-title'>⚡ Cognitive Quiz Arena (Multiple Choice Format)</div>")
+        with gr.Row():
+            with gr.Column(scale=3):
+                with gr.Row(elem_classes=["quiz-subject-header-row"]):
+                    q_subject = gr.Radio(
+                        choices=["🌐 All Subjects", "📊 Maths (P&S)", "💻 C++ (DSA)", "🧠 FAI", "🗄️ ADBMS"],
+                        value="🌐 All Subjects",
+                        label="🎯 Select Subject to Test:",
+                        elem_classes=["quiz-subject-radio"]
+                    )
+                with gr.Row(elem_classes=["quiz-quick-action-row"]):
+                    btn_q_all = gr.Button("🌐 All Subjects", size="sm", elem_classes=["quiz-pill-btn"])
+                    btn_q_maths = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["quiz-pill-btn"])
+                    btn_q_cpp = gr.Button("💻 C++ (DSA)", size="sm", elem_classes=["quiz-pill-btn"])
+                    btn_q_fai = gr.Button("🧠 FAI", size="sm", elem_classes=["quiz-pill-btn"])
+                    btn_q_adbms = gr.Button("🗄️ ADBMS", size="sm", elem_classes=["quiz-pill-btn"])
                 with gr.Row():
-                    with gr.Column(scale=3):
-                        with gr.Row(elem_classes=["quiz-subject-header-row"]):
-                            q_subject = gr.Radio(
-                                choices=["🌐 All Subjects", "📊 Maths (P&S)", "💻 C++ (DSA)", "🧠 FAI", "🗄️ ADBMS"],
-                                value="🌐 All Subjects",
-                                label="🎯 Select Subject to Test:",
-                                elem_classes=["quiz-subject-radio"]
-                            )
-                        with gr.Row(elem_classes=["quiz-quick-action-row"]):
-                            btn_q_all = gr.Button("🌐 All Subjects", size="sm", elem_classes=["quiz-pill-btn"])
-                            btn_q_maths = gr.Button("📊 Maths (P&S)", size="sm", elem_classes=["quiz-pill-btn"])
-                            btn_q_cpp = gr.Button("💻 C++ (DSA)", size="sm", elem_classes=["quiz-pill-btn"])
-                            btn_q_fai = gr.Button("🧠 FAI", size="sm", elem_classes=["quiz-pill-btn"])
-                            btn_q_adbms = gr.Button("🗄️ ADBMS", size="sm", elem_classes=["quiz-pill-btn"])
-                        with gr.Row():
-                            q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions", scale=1)
-                            q_btn = gr.Button("🎯 Generate Targeted MCQ Quiz", variant="primary", scale=2)
+                    q_n = gr.Slider(3, 6, value=4, step=1, label="Number of Questions", scale=1)
+                    q_btn = gr.Button("🎯 Generate Targeted MCQ Quiz", variant="primary", scale=2)
 
-                        quiz_status_md = gr.Markdown("_Select a subject above or click a button to generate multiple-choice questions from your active syllabus._")
-                        
-                        # 6 Multiple Choice Radio groups
-                        q_radios = [
-                            gr.Radio(
-                                choices=[],
-                                visible=False,
-                                label=f"Question {i + 1}",
-                                interactive=True,
-                                elem_classes=["mcq-card-radio"]
-                            ) for i in range(6)
-                        ]
-                        
-                        submit_btn = gr.Button("📤 Submit Answers & Compute Marks", variant="primary")
-                        feedback_md = gr.Markdown()
-                    with gr.Column(scale=2):
-                        analytics_html = gr.HTML(EMPTY)
+                quiz_status_md = gr.Markdown("_Select a subject above or click a button to generate multiple-choice questions from your active syllabus._")
+                
+                # 6 Multiple Choice Radio groups
+                q_radios = [
+                    gr.Radio(
+                        choices=[],
+                        visible=False,
+                        label=f"Question {i + 1}",
+                        interactive=True,
+                        elem_classes=["mcq-card-radio"]
+                    ) for i in range(6)
+                ]
+                
+                submit_btn = gr.Button("📤 Submit Answers & Compute Marks", variant="primary")
+                feedback_md = gr.Markdown()
+            with gr.Column(scale=2):
+                analytics_html = gr.HTML(EMPTY)
 
     # EVENT WIRING
     def switch_nav_view(selected_tab: str):
